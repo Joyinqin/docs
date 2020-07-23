@@ -78,7 +78,7 @@ Two solutions:
 
 ### Syncer infrastructure
 
-See [Parsing TiDB online data synchronization tool Syncer](https://pingcap.com/blog-cn/tidb-syncer/)in Chinese.
+See [Parsing TiDB online data synchronization tool Syncer](https://pingcap.com/blog-cn/tidb-syncer/) in Chinese.
 
 #### Syncer user guide
 
@@ -102,7 +102,7 @@ No. Currently, the data replication depends on the application itself.
 
 #### Does Syncer support replicating only some of the tables when Syncer is replicating data?
 
-Yes. For details, see [Syncer User Guide](/syncer-overview.md)
+Yes. For details, see [Syncer User Guide](/syncer-overview.md).
 
 #### Do frequent DDL operations affect the replication speed of Syncer?
 
@@ -176,3 +176,5 @@ If the amount of data that needs to be deleted at a time is very large, this loo
 You can configure concurrent GC to increase the speed of reclaiming storage space. The default concurrency is 1, and you can modify it to at most 50% of the number of TiKV instances using the following command:
 
 {{< copyable "sql" >}}
+
+`update mysql.tidb set VARIABLE_VALUE="3" where VARIABLE_NAME="tikv_gc_concurrency";`
