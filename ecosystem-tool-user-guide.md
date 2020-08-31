@@ -7,7 +7,7 @@ aliases: ['/docs/v3.1/ecosystem-tool-user-guide/','/docs/v3.1/reference/tools/us
 
 This document introduces the functionalities of TiDB ecosystem tools and their relationship.
 
-## Full data export 
+## Full data export
 
 [Dumpling](/export-or-backup-using-dumpling.md) is a tool for the logical full data export from MySQL or TiDB.
 
@@ -63,11 +63,7 @@ The following are the basics of TiDB Binlog:
 
 ## Data migration
 
-<<<<<<< HEAD
-[TiDB Data Migration](https://pingcap.com/docs/tidb-data-migration/stable/) (DM) is an integrated data replication task management platform that supports the full data migration and the incremental data migration from MySQL/MariaDB to TiDB.
-=======
 [TiDB Data Migration](https://docs.pingcap.com/tidb-data-migration/v2.0) (DM) is an integrated data replication task management platform that supports the full data migration and the incremental data migration from MySQL/MariaDB to TiDB.
->>>>>>> 92163d1... Update DM 2.0 related doc (#3757)
 
 The following are the basics of DM:
 
