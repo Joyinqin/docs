@@ -35,7 +35,7 @@ Clustered index defines the physical storage order of data in a table. The data 
 
 Users can enable the clustered index feature by modifying the `tidb_enable_clustered_index` variable. When enabled, the feature takes effect only on newly created tables and applies to the primary key that has multiple columns or is non-integer types in a single column. If the primary key is an integer type in a single column, or if the table has no primary key, the data is sorted in the same way as before, without being affected by the clustered index.
 
-For example, to check whether a table (`tbl_name`) has a clustered index, execute `select tidb_pk_type from information_schema.tables where tbl_name = '{tbl_name}'`.
+For example, to check whether a table (`tbl_name`) has a clustered index, execute `select tidb_pk_type from information_schema.tables where table_name = '{tbl_name}'`.
 
 + [User document](/system-variables.md#tidb_enable_clustered_index-new-in-v500-rc)
 + Related issue: [#4841](https://github.com/pingcap/tidb/issues/4841)
@@ -158,8 +158,8 @@ In the process of Region membership changes, "adding a member" and "deleting a m
 
 ## Backup and restore
 
-+ The Backup & Restore tool (BR) supports backing up data to AWS S3 and Google Cloud GCS. ([User document](/br/backup-and-restore-tool.md#back-up-data-to-amazon-s3-backend))
-+ The Backup & Restore tool (BR) supports restoring data from AWS S3 and Google Cloud GCS to TiDB. ([User document](/br/backup-and-restore-tool.md#restore-data-from-amazon-s3-backend))
++ The Backup & Restore tool (BR) supports backing up data to AWS S3 and Google Cloud GCS. ([User document](/br/use-br-command-line-tool.md#back-up-data-to-amazon-s3-backend))
++ The Backup & Restore tool (BR) supports restoring data from AWS S3 and Google Cloud GCS to TiDB. ([User document](/br/use-br-command-line-tool.md#restore-data-from-amazon-s3-backend))
 + Related issue: [#89](https://github.com/pingcap/br/issues/89)
 
 ## Data import and export
