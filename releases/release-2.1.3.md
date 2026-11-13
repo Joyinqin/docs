@@ -1,6 +1,7 @@
 ---
 title: TiDB 2.1.3 Release Notes
 aliases: ['/docs/dev/releases/release-2.1.3/','/docs/dev/releases/2.1.3/']
+summary: TiDB 2.1.3 and TiDB Ansible 2.1.3 are released with improvements in system stability, SQL optimizer, statistics, and execution engine. Fixes include issues with Prepared Plan Cache, Range computing, `CAST(str AS TIME(N))`, Generated Column, statistics histogram, `Sort Merge Join`, and more. Other improvements include support for Range for `_tidb_rowid` construction queries, `ALLOW_INVALID_DATES` SQL mode, and more. PD and TiKV also have fixes and improvements. TiDB Binlog fixes issues with the Pump client log and data inconsistency caused by unique key containing NULL value.
 ---
 
 # TiDB 2.1.3 Release Notes
@@ -12,7 +13,7 @@ On January 28, 2019, TiDB 2.1.3 is released. The corresponding TiDB Ansible 2.1.
 + SQL Optimizer/Executor
     - Fix the panic issue of Prepared Plan Cache in some cases [#8826](https://github.com/pingcap/tidb/pull/8826)
     - Fix the issue that Range computing is wrong when the index is a prefix index [#8851](https://github.com/pingcap/tidb/pull/8851)
-    - Make `CAST(str AS TIME(N))` return null if the string is in the illegal `TIME` format when `SQL_MODE` is not strict [#8966](https://github.com/pingcap/tidb/pull/8966)
+    - Make `CAST(str AS TIME(N))` return null if the string is in the invalid `TIME` format when `SQL_MODE` is not strict [#8966](https://github.com/pingcap/tidb/pull/8966)
     - Fix the panic issue of Generated Column during the process of `UPDATE` in some cases [#8980](https://github.com/pingcap/tidb/pull/8980)
     - Fix the upper bound overflow issue of the statistics histogram in some cases [#8989](https://github.com/pingcap/tidb/pull/8989)
     - Support Range for `_tidb_rowid` construction queries, to avoid full table scan and reduce cluster stress [#9059](https://github.com/pingcap/tidb/pull/9059)
@@ -52,6 +53,6 @@ On January 28, 2019, TiDB 2.1.3 is released. The corresponding TiDB Ansible 2.1.
 ## Tools
 
 + TiDB Binlog
-    - Fix the `no available pump` issue while TiDB is started or restarted [#157](https://github.com/pingcap/tidb-tools/pull/158)
+    - Fix the `no available pump` issue while TiDB is started or restarted [#158](https://github.com/pingcap/tidb-tools/pull/158)
     - Enable outputting the Pump client log [#165](https://github.com/pingcap/tidb-tools/pull/165)
     - Fix the data inconsistency issue caused by the unique key containing the NULL value when the table only has the unique key and does not have the primary key

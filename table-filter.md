@@ -6,48 +6,59 @@ aliases: ['/docs/dev/tidb-lightning/tidb-lightning-table-filter/','/docs/dev/ref
 
 # Table Filter
 
-The TiDB ecosystem tools operate on all the databases by default, but oftentimes only a subset is needed. For example, you only want to work with the schemas in the form of `foo*` and `bar*` and nothing else.
+The TiDB migration tools operate on all the databases by default, but oftentimes only a subset is needed. For example, you only want to work with the schemas in the form of `foo*` and `bar*` and nothing else.
 
-Since TiDB 4.0, all TiDB ecosystem tools share a common filter syntax to define subsets. This document describes how to use the table filter feature.
+Since TiDB 4.0, all TiDB migration tools share a common filter syntax to define subsets. This document describes how to use the table filter feature.
 
 ## Usage
 
 ### CLI
 
-Table filters can be applied to the tools using multiple `-f` or `--filter` command line parameters. Each filter is in the form of `db.table`, where each part can be a wildcard (further explained in the [next section](#wildcards)). The following lists the example usage in each tool.
+Table filters can be applied to the tools using multiple `-f` or `--filter` command line parameters. Each filter is in the form of `db.table`, where each part can be a wildcard (further explained in the [next section](#wildcards)). The following lists the example usage.
 
-* [BR](/br/backup-and-restore-tool.md):
+<CustomContent platform="tidb">
 
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    ./br backup full -f 'foo*.*' -f 'bar*.*' -s 'local:///tmp/backup'
-    #                ^~~~~~~~~~~~~~~~~~~~~~~
-    ./br restore full -f 'foo*.*' -f 'bar*.*' -s 'local:///tmp/backup'
-    #                 ^~~~~~~~~~~~~~~~~~~~~~~
-    ```
-
-* [Dumpling](/dumpling-overview.md):
-
-    {{< copyable "shell-regular" >}}
+* [BR](/br/backup-and-restore-overview.md):
 
     ```shell
-    ./dumpling -f 'foo*.*' -f 'bar*.*' -P 3306 -o /tmp/data/
-    #          ^~~~~~~~~~~~~~~~~~~~~~~
+    tiup br backup full -f 'foo*.*' -f 'bar*.*' -s 'local:///tmp/backup'
     ```
+
+    ```shell
+    tiup br restore full -f 'foo*.*' -f 'bar*.*' -s 'local:///tmp/backup'
+    ```
+
+</CustomContent>
+
+* [Dumpling](https://docs.pingcap.com/tidb/stable/dumpling-overview):
+
+    ```shell
+    tiup dumpling -f 'foo*.*' -f 'bar*.*' -P 3306 -o /tmp/data/
+    ```
+
+<CustomContent platform="tidb">
 
 * [TiDB Lightning](/tidb-lightning/tidb-lightning-overview.md):
 
-    {{< copyable "shell-regular" >}}
+    ```shell
+    tiup tidb-lightning -f 'foo*.*' -f 'bar*.*' -d /tmp/data/ --backend tidb
+    ```
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+* [TiDB Lightning](https://docs.pingcap.com/tidb/stable/tidb-lightning-overview):
 
     ```shell
-    ./tidb-lightning -f 'foo*.*' -f 'bar*.*' -d /tmp/data/ --backend tidb
-    #                ^~~~~~~~~~~~~~~~~~~~~~~
+    tiup tidb-lightning -f 'foo*.*' -f 'bar*.*' -d /tmp/data/ --backend tidb
     ```
+
+</CustomContent>
 
 ### TOML configuration files
 
-Table filters in TOML files are specified as [array of strings](https://toml.io/en/v1.0.0-rc.1#section-15). The following lists the example usage in each tool.
+Table filters in TOML files are specified as [array of strings](https://toml.io/en/v1.0.0-rc.1#section-15). The following lists the example usage.
 
 * TiDB Lightning:
 
@@ -55,6 +66,8 @@ Table filters in TOML files are specified as [array of strings](https://toml.io/
     [mydumper]
     filter = ['foo*.*', 'bar*.*']
     ```
+
+<CustomContent platform="tidb">
 
 * [TiCDC](/ticdc/ticdc-overview.md):
 
@@ -66,6 +79,8 @@ Table filters in TOML files are specified as [array of strings](https://toml.io/
     matcher = ['db1.*', 'db2.*', 'db3.*']
     dispatcher = 'ts'
     ```
+
+</CustomContent>
 
 ## Syntax
 
@@ -124,8 +139,8 @@ employees.*
 the following two invocations are equivalent:
 
 ```bash
-./dumpling -f '@config/filter.txt'
-./dumpling -f 'employees.*' -f '*.WorkOrder'
+tiup dumpling -f '@config/filter.txt'
+tiup dumpling -f 'employees.*' -f '*.WorkOrder'
 ```
 
 A filter file cannot further import another file.
@@ -212,10 +227,10 @@ To build a block list, an explicit `*.*` must be used as the first rule, otherwi
 
 ```bash
 # every table will be filtered out
-./dumpling -f '!*.Password'
+tiup dumpling -f '!*.Password'
 
 # only the "Password" table is filtered out, the rest are included.
-./dumpling -f '*.*' -f '!*.Password'
+tiup dumpling -f '*.*' -f '!*.Password'
 ```
 
 In a filter list, if a table name matches multiple patterns, the last match decides the outcome. For instance:

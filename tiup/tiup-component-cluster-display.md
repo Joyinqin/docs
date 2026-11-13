@@ -1,5 +1,6 @@
 ---
 title: tiup cluster display
+summary: tiup cluster display command efficiently shows the operation status of each component in the cluster. It provides options to display dashboard information, node status, CPU and memory usage, and more. The output includes cluster name, version, SSH client type, dashboard address, and a table with node details. Node service status can be Up, Down, Tombstone, Pending Offline, or Unknown.
 ---
 
 # tiup cluster display
@@ -26,11 +27,11 @@ tiup cluster display <cluster-name> [flags]
 
 - Specifies the node to display. If this option is not specified, all nodes are displayed. The value of this option is a comma-separated list of node IDs. If you are not sure about the ID of a node, you can skip this option in the command to show the IDs and status of all nodes in the output.
 - Data type: `STRINGS`
-- If this option is not specified in the command, all nodes are checked by default.
+- If this option is not specified in the command, all nodes are displayed by default.
 
 > **Note:**
 >
-> If the `-R, --role` option is specified at the same time, only the service nodes that match both the specifications of `-N, --node` and `-R, --role` are checked.
+> If the `-R, --role` option is specified at the same time, only the service nodes that match both the specifications of `-N, --node` and `-R, --role` are displayed.
 
 ### -R, --role
 
@@ -41,6 +42,26 @@ tiup cluster display <cluster-name> [flags]
 > **Note:**
 >
 > If the `-N, --node` option is specified at the same time, only the service nodes that match both the specifications of `-N, --node` and `-R, --role` are displayed.
+
+### --process
+
+- Displays the CPU and memory usage information of the node when this option is enabled. This option is disabled by default.
+- Data type: `BOOLEAN`
+- Default value: `false`
+- To enable this option, you can add this option to the command, and pass the `true` value or do not pass any value.
+
+### --uptime
+
+- Displays the `uptime` information of the node when this option is enabled. This option is disabled by default.
+- Data type: `BOOLEAN`
+- Default value: `false`
+- To enable this option, you can add this option to the command, and pass the `true` value or do not pass any value.
+
+### --status-timeout
+
+- Specifies the timeout period for obtaining the node status information.
+- Data type: `INT`
+- Default value: `10`, in the unit of second.
 
 ### -h, --help
 
@@ -64,4 +85,22 @@ tiup cluster display <cluster-name> [flags]
     - Data Dir: the data directory of the service. `-` means no data directory.
     - Deploy Dir: the deployment directory of the service
 
-[<< Back to the previous page - TiUP Cluster command list](/tiup/tiup-component-cluster.md#command-list)
+### Node service status
+
+A node service can run in one of the following statuses:
+
+- Up: The node service is running normally.
+- Down or Unreachable: The node service is not running or a network problem exists on the corresponding host.
+- Tombstone: The data on the node service has been completely migrated out and the scaling-in is complete. This status exists only on TiKV or TiFlash.
+- Pending Offline: The data on the node service is being migrated out and the scaling-in is in process. This status exists only on TiKV or TiFlash.
+- Unknown: The running status of the node service is unknown.
+
+> **Note:**
+>
+> `Pending Offline` in TiUP, `Offline` returned by PD API, and `Leaving` in TiDB Dashboard indicate the same status.
+
+Node service status derives from the PD scheduling information. For more details, see [Information collection](/tidb-scheduling.md#information-collection).
+
+## See also
+
+- [TiUP Common Operations](/maintain-tidb-using-tiup.md)

@@ -1,6 +1,7 @@
 ---
 title: TiDB 4.0 RC.2 Release Notes
 aliases: ['/docs/dev/releases/release-4.0.0-rc.2/']
+summary: TiDB 4.0 RC.2 was released on May 15, 2020. The release includes compatibility changes, important bug fixes, new features, and bug fixes for TiDB, TiKV, PD, TiFlash, and various tools. Some notable changes include the removal of the size limit for a single transaction when TiDB Binlog is enabled, support for the BACKUP and RESTORE commands, and the addition of encryption-related monitoring metrics in Grafana dashboard. Additionally, there are numerous bug fixes for issues such as wrong partition selection, incorrect index range building, and performance reduction. The release also introduces new features like support for the auto_random option in the CREATE TABLE statement and the ability to manage replication tasks using cdc cli.
 ---
 
 # TiDB 4.0 RC.2 Release Notes
@@ -89,7 +90,7 @@ TiDB version: 4.0.0-rc.2
 
     - Change the name of the Count graph of **Read Index** in Grafana to **Ops**
     - Optimize the data for opening file descriptors when the system load is low to reduce system resource consumption
-    - Add the capacity-related configuration parameter to limit the the data storage capacity
+    - Add the capacity-related configuration parameter to limit the data storage capacity
 
 + Tools
 
@@ -99,7 +100,7 @@ TiDB version: 4.0.0-rc.2
 
     - TiCDC
 
-        - Support managing the replication task by using `cdc cli` (changefeed) [#546](https://github.com/pingcap/ticdc/pull/546)
+        - Support managing the replication task by using `cdc cli` (changefeed) [#546](https://github.com/pingcap/tiflow/pull/546)
 
     - Backup & Restore (BR)
 
@@ -126,12 +127,12 @@ TiDB version: 4.0.0-rc.2
     - Fix the issue that the `NotNullFlag` result type is incorrectly set for an expression whose result type is determined by multiple input columns, such as `CASE WHEN` [#16995](https://github.com/pingcap/tidb/pull/16995)
     - Fix the issue that the green GC might leave unresolved locks when dirty stores exist [#16949](https://github.com/pingcap/tidb/pull/16949)
     - Fix the issue that the green GC might leave unresolved locks when encountering a single key with multiple different locks [#16948](https://github.com/pingcap/tidb/pull/16948)
-    - Fix the issue of inserting a wrong value in the `INSERT VALUE` statement because a sub-query refers to a parent query column [#16952](https://github.com/pingcap/tidb/pull/16952)
+    - Fix the issue of inserting a wrong value in the `INSERT VALUE` statement because a subquery refers to a parent query column [#16952](https://github.com/pingcap/tidb/pull/16952)
     - Fix the issue of incorrect results when using the `AND` operator on the `Float` value [#16666](https://github.com/pingcap/tidb/pull/16666)
     - Fix the wrong information of the `WAIT_TIME` field in the expensive log [#16907](https://github.com/pingcap/tidb/pull/16907)
     - Fix the issue that the `SELECT FOR UPDATE` statement cannot be recorded in the slow log in the pessimistic transaction mode [#16897](https://github.com/pingcap/tidb/pull/16897)
     - Fix the wrong result that occurs when executing `SELECT DISTINCT` on a column of the `Enum` or `Set` type [#16892](https://github.com/pingcap/tidb/pull/16892)
-    - Fix the display error of `auto_random_base` in the `SHOW CREATE  TABLE` statement [#16864](https://github.com/pingcap/tidb/pull/16864)
+    - Fix the display error of `auto_random_base` in the `SHOW CREATE TABLE` statement [#16864](https://github.com/pingcap/tidb/pull/16864)
     - Fix the incorrect value of `string_value` in the `WHERE` clause [#16559](https://github.com/pingcap/tidb/pull/16559)
     - Fix the issue that the error message of the `GROUP BY` window function is inconsistent with that of MySQL [#16165](https://github.com/pingcap/tidb/pull/16165)
     - Fix the issue that the `FLASH TABLE` statement fails to execute when the database name contains the uppercase letter [#17167](https://github.com/pingcap/tidb/pull/17167)
@@ -160,7 +161,7 @@ TiDB version: 4.0.0-rc.2
     - Fix the issue that the backup data cannot be restored from GCS [#7739](https://github.com/tikv/tikv/pull/7739)
     - Fix the issue that KMS key ID is not validated during encryption at rest [#7719](https://github.com/tikv/tikv/pull/7719)
     - Fix the underlying correctness issue of the Coprocessor in compilers of different architecture  [#7714](https://github.com/tikv/tikv/pull/7714) [#7730](https://github.com/tikv/tikv/pull/7730)
-    - Fix the `snapshot ingestion` error when encrytion is enabled [#7815](https://github.com/tikv/tikv/pull/7815)
+    - Fix the `snapshot ingestion` error when encryption is enabled [#7815](https://github.com/tikv/tikv/pull/7815)
     - Fix the `Invalid cross-device link` error when rewriting the configuration file [#7817](https://github.com/tikv/tikv/pull/7817)
     - Fix the issue of wrong toml format when writing the configuration file to an empty file [#7817](https://github.com/tikv/tikv/pull/7817)
     - Fix the issue that a destroyed peer in Raftstore can still process requests [#7836](https://github.com/tikv/tikv/pull/7836)
@@ -186,11 +187,11 @@ TiDB version: 4.0.0-rc.2
 
     - TiCDC
 
-        - Fix the issue of using the wrong time zone when the `TZ` environment variable is not set [#512](https://github.com/pingcap/ticdc/pull/512)
-        - Fix the issue that the owner does not clean up the resources when the server exits because some errors are not handled correctly [#528](https://github.com/pingcap/ticdc/pull/528)
-        - Fix the issue that TiCDC might be stuck when reconnecting to TiKV [#531](https://github.com/pingcap/ticdc/pull/531)
-        - Optimize the memory usage when initializing the table schema [#534](https://github.com/pingcap/ticdc/pull/534)
-        - Use the `watch` mode to monitor the replication status changes and perform quasi-real-time updates to reduce replication delay [#481](https://github.com/pingcap/ticdc/pull/481)
+        - Fix the issue of using the wrong time zone when the `TZ` environment variable is not set [#512](https://github.com/pingcap/tiflow/pull/512)
+        - Fix the issue that the owner does not clean up the resources when the server exits because some errors are not handled correctly [#528](https://github.com/pingcap/tiflow/pull/528)
+        - Fix the issue that TiCDC might be stuck when reconnecting to TiKV [#531](https://github.com/pingcap/tiflow/pull/531)
+        - Optimize the memory usage when initializing the table schema [#534](https://github.com/pingcap/tiflow/pull/534)
+        - Use the `watch` mode to monitor the replication status changes and perform quasi-real-time updates to reduce replication delay [#481](https://github.com/pingcap/tiflow/pull/481)
 
     + Backup & Restore (BR)
 

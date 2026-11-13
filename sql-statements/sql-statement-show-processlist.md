@@ -6,30 +6,30 @@ aliases: ['/docs/dev/sql-statements/sql-statement-show-processlist/','/docs/dev/
 
 # SHOW [FULL] PROCESSLIST
 
-This statement lists the current sessions connected to the same TiDB server. The `Info` column contains the query text, which will be truncated unless the optional keyword `FULL` is specified.
+This statement lists the current sessions connected to the same TiDB server. The `Info` column contains the query text, which will be truncated unless the optional keyword `FULL` is specified. To view the processlist across the entire cluster, use the [`INFORMATION_SCHEMA.CLUSTER_PROCESSLIST`](/information-schema/information-schema-processlist.md#cluster_processlist) table.
 
 ## Synopsis
 
-**ShowProcesslistStmt:**
-
-![ShowProcesslistStmt](/media/sqlgram/ShowProcesslistStmt.png)
-
-**OptFull:**
-
-![OptFull](/media/sqlgram/OptFull.png)
+```ebnf+diagram
+ShowProcesslistStmt ::=
+    "SHOW" "FULL"? "PROCESSLIST"
+```
 
 ## Examples
 
 ```sql
 mysql> SHOW PROCESSLIST;
-+------+------+-----------+------+---------+------+-------+------------------+
-| Id   | User | Host      | db   | Command | Time | State | Info             |
-+------+------+-----------+------+---------+------+-------+------------------+
-|    1 | root | 127.0.0.1 | test | Query   |    0 | 2     | SHOW PROCESSLIST |
-|    2 | root | 127.0.0.1 |      | Sleep   |    4 | 2     |                  |
-+------+------+-----------+------+---------+------+-------+------------------+
-2 rows in set (0.00 sec)
++------+------+-----------------+------+---------+------+------------+------------------+
+| Id   | User | Host            | db   | Command | Time | State      | Info             |
++------+------+-----------------+------+---------+------+------------+------------------+
+|    5 | root | 127.0.0.1:45970 | test | Query   |    0 | autocommit | SHOW PROCESSLIST |
++------+------+-----------------+------+---------+------+------------+------------------+
+1 rows in set (0.00 sec)
 ```
+
+## Permissions
+
+If the current user does not have the `PROCESS` privilege, `SHOW PROCESSLIST` only shows the requests from the user’s own sessions.
 
 ## MySQL compatibility
 
@@ -38,3 +38,4 @@ mysql> SHOW PROCESSLIST;
 ## See also
 
 * [KILL \[TIDB\]](/sql-statements/sql-statement-kill.md)
+* [`INFORMATION_SCHEMA.PROCESSLIST`](/information-schema/information-schema-processlist.md)

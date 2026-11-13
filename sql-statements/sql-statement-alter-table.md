@@ -8,14 +8,19 @@ aliases: ['/docs/dev/sql-statements/sql-statement-alter-table/','/docs/dev/refer
 
 This statement modifies an existing table to conform to a new table structure. The statement `ALTER TABLE` can be used to:
 
-* [`ADD`](/sql-statements/sql-statement-add-index.md), [`DROP`](/sql-statements/sql-statement-drop-index.md), or [`RENAME`](/sql-statements/sql-statement-rename-index.md) indexes
-* [`ADD`](/sql-statements/sql-statement-add-column.md), [`DROP`](/sql-statements/sql-statement-drop-column.md), [`MODIFY`](/sql-statements/sql-statement-modify-column.md) or [`CHANGE`](/sql-statements/sql-statement-change-column.md) columns
+- [`ADD`](/sql-statements/sql-statement-add-index.md), [`DROP`](/sql-statements/sql-statement-drop-index.md), or [`RENAME`](/sql-statements/sql-statement-rename-index.md) indexes
+- [`ADD`](/sql-statements/sql-statement-add-column.md), [`DROP`](/sql-statements/sql-statement-drop-column.md), [`MODIFY`](/sql-statements/sql-statement-modify-column.md) or [`CHANGE`](/sql-statements/sql-statement-change-column.md) columns
+- [`COMPACT`](/sql-statements/sql-statement-alter-table-compact.md) table data
 
 ## Synopsis
 
 ```ebnf+diagram
 AlterTableStmt ::=
-    'ALTER' IgnoreOptional 'TABLE' TableName ( AlterTableSpecListOpt AlterTablePartitionOpt | 'ANALYZE' 'PARTITION' PartitionNameList ( 'INDEX' IndexNameList )? AnalyzeOptionListOpt )
+    'ALTER' IgnoreOptional 'TABLE' TableName (
+        AlterTableSpecListOpt AlterTablePartitionOpt |
+        'ANALYZE' 'PARTITION' PartitionNameList ( 'INDEX' IndexNameList )? AnalyzeOptionListOpt |
+        'COMPACT' ( 'PARTITION' PartitionNameList )? 'TIFLASH' 'REPLICA'
+    )
 
 TableName ::=
     Identifier ('.' Identifier)?
@@ -27,14 +32,14 @@ AlterTableSpec ::=
 |   'ADD' ( ColumnKeywordOpt IfNotExists ( ColumnDef ColumnPosition | '(' TableElementList ')' ) | Constraint | 'PARTITION' IfNotExists NoWriteToBinLogAliasOpt ( PartitionDefinitionListOpt | 'PARTITIONS' NUM ) )
 |   ( ( 'CHECK' | 'TRUNCATE' ) 'PARTITION' | ( 'OPTIMIZE' | 'REPAIR' | 'REBUILD' ) 'PARTITION' NoWriteToBinLogAliasOpt ) AllOrPartitionNameList
 |   'COALESCE' 'PARTITION' NoWriteToBinLogAliasOpt NUM
-|   'DROP' ( ColumnKeywordOpt IfExists ColumnName RestrictOrCascadeOpt | 'PRIMARY' 'KEY' |  'PARTITION' IfExists PartitionNameList | ( KeyOrIndex IfExists | 'CHECK' ) Identifier | 'FOREIGN' 'KEY' IfExists Symbol )
+|   'DROP' ( ColumnKeywordOpt IfExists ColumnName RestrictOrCascadeOpt | 'PRIMARY' 'KEY' |  'PARTITION' IfExists PartitionNameList | ( KeyOrIndex IfExists | 'CHECK' ) Identifier | 'FOREIGN' 'KEY' Symbol )
 |   'EXCHANGE' 'PARTITION' Identifier 'WITH' 'TABLE' TableName WithValidationOpt
 |   ( 'IMPORT' | 'DISCARD' ) ( 'PARTITION' AllOrPartitionNameList )? 'TABLESPACE'
 |   'REORGANIZE' 'PARTITION' NoWriteToBinLogAliasOpt ReorganizePartitionRuleOpt
 |   'ORDER' 'BY' AlterOrderItem ( ',' AlterOrderItem )*
 |   ( 'DISABLE' | 'ENABLE' ) 'KEYS'
 |   ( 'MODIFY' ColumnKeywordOpt IfExists | 'CHANGE' ColumnKeywordOpt IfExists ColumnName ) ColumnDef ColumnPosition
-|   'ALTER' ( ColumnKeywordOpt ColumnName ( 'SET' 'DEFAULT' ( SignedLiteral | '(' Expression ')' ) | 'DROP' 'DEFAULT' ) | 'CHECK' Identifier EnforcedOrNot | 'INDEX' Identifier IndexInvisible )
+|   'ALTER' ( ColumnKeywordOpt ColumnName ( 'SET' 'DEFAULT' ( SignedLiteral | '(' Expression ')' ) | 'DROP' 'DEFAULT' ) | 'CHECK' Identifier EnforcedOrNot | 'INDEX' Identifier ("VISIBLE" | "INVISIBLE") )
 |   'RENAME' ( ( 'COLUMN' | KeyOrIndex ) Identifier 'TO' Identifier | ( 'TO' | '='? | 'AS' ) TableName )
 |   LockClause
 |   AlgorithmClause
@@ -42,6 +47,20 @@ AlterTableSpec ::=
 |   ( 'WITH' | 'WITHOUT' ) 'VALIDATION'
 |   'SECONDARY_LOAD'
 |   'SECONDARY_UNLOAD'
+|   ( 'AUTO_INCREMENT' | 'AUTO_ID_CACHE' | 'AUTO_RANDOM_BASE' | 'SHARD_ROW_ID_BITS' ) EqOpt LengthNum
+|   ( 'CACHE' | 'NOCACHE' )
+|   (
+        'TTL' EqOpt TimeColumnName '+' 'INTERVAL' Expression TimeUnit (TTLEnable EqOpt ( 'ON' | 'OFF' ))?
+        | 'REMOVE' 'TTL'
+        | TTLEnable EqOpt ( 'ON' | 'OFF' )
+        | TTLJobInterval EqOpt stringLit
+    )
+|   'AFFINITY' EqOpt stringLit
+|   PlacementPolicyOption
+
+PlacementPolicyOption ::=
+    "PLACEMENT" "POLICY" EqOpt PolicyName
+|   "PLACEMENT" "POLICY" (EqOpt | "SET") "DEFAULT"
 ```
 
 ## Examples
@@ -102,7 +121,7 @@ Query OK, 0 rows affected (0.30 sec)
 2 rows in set (0.00 sec)
 ```
 
-TiDB supports the ability to assert that DDL changes will use a particular `ALTER` algorithm. This is only an assertion, and does not change the actual algorithm which will be used to modify the table. It can be useful if you only want to permit instant DDL changes during the peak hours of your cluster:
+TiDB supports the ability to assert that DDL changes use a particular `ALTER` algorithm. Note that this is only an assertion, and does not change the actual algorithm used to modify the table:
 
 {{< copyable "sql" >}}
 
@@ -150,29 +169,37 @@ Query OK, 0 rows affected, 1 warning (0.25 sec)
 
 The following major restrictions apply to `ALTER TABLE` in TiDB:
 
-* Making multiple changes in a single `ALTER TABLE` statement is currently not supported. 
+- When altering multiple schema objects in a single `ALTER TABLE` statement:
 
-* Changes of the [Reorg-Data](/sql-statements/sql-statement-modify-column.md#reorg-data-change) types on primary key columns are not supported.
+    - Modifying the same object in multiple changes is not supported.
+    - TiDB validates statements according to the table schema **before execution**. For example, an error returns when `ALTER TABLE t ADD COLUMN c1 INT, ADD COLUMN c2 INT AFTER c1;` is executed because column `c1` does not exist in the table.
+    - For an `ALTER TABLE` statement, the order of execution in TiDB is one change after another from left to right, which is incompatible with MySQL in some cases.
 
-* Changes of column types on partitioned tables are not supported.
+- Changes of the [Reorg-Data](/sql-statements/sql-statement-modify-column.md#reorg-data-change) types on primary key columns are not supported.
 
-* Changes of column types on generated columns are not supported.
+- Changes of column types on partitioned tables are not supported.
 
-* Changes of some data types (for example, some TIME, Bit, Set, Enum, and JSON types) are not supported due to the compatibility issues of the `CAST` function's behavior between TiDB and MySQL.
+- Changes of column types on generated columns are not supported.
 
-* Spatial data types are not supported.
+- Changes of some data types (for example, some TIME, Bit, Set, Enum, and JSON types) are not supported due to the compatibility issues of the `CAST` function's behavior between TiDB and MySQL.
 
-For further restrictions, see [MySQL Compatibility](/mysql-compatibility.md#ddl).
+- The `AFFINITY` option is a TiDB extension syntax. After `AFFINITY` is enabled for a table, you cannot modify the partition scheme of that table, such as adding, dropping, reorganizing, or swapping partitions. To modify the partition scheme, you must first remove `AFFINITY`.
+
+- Spatial data types are not supported.
+
+- `ALTER TABLE t CACHE | NOCACHE` is a TiDB extension to MySQL syntax. For details, see [Cached Tables](/cached-tables.md).
+
+For further restrictions, see [MySQL Compatibility](/mysql-compatibility.md#ddl-operations).
 
 ## See also
 
-* [MySQL Compatibility](/mysql-compatibility.md#ddl)
-* [ADD COLUMN](/sql-statements/sql-statement-add-column.md)
-* [DROP COLUMN](/sql-statements/sql-statement-drop-column.md)
-* [ADD INDEX](/sql-statements/sql-statement-add-index.md)
-* [DROP INDEX](/sql-statements/sql-statement-drop-index.md)
-* [RENAME INDEX](/sql-statements/sql-statement-rename-index.md)
-* [ALTER INDEX](/sql-statements/sql-statement-alter-index.md)
-* [CREATE TABLE](/sql-statements/sql-statement-create-table.md)
-* [DROP TABLE](/sql-statements/sql-statement-drop-table.md)
-* [SHOW CREATE TABLE](/sql-statements/sql-statement-show-create-table.md)
+- [MySQL Compatibility](/mysql-compatibility.md#ddl-operations)
+- [ADD COLUMN](/sql-statements/sql-statement-add-column.md)
+- [DROP COLUMN](/sql-statements/sql-statement-drop-column.md)
+- [ADD INDEX](/sql-statements/sql-statement-add-index.md)
+- [DROP INDEX](/sql-statements/sql-statement-drop-index.md)
+- [RENAME INDEX](/sql-statements/sql-statement-rename-index.md)
+- [ALTER INDEX](/sql-statements/sql-statement-alter-index.md)
+- [CREATE TABLE](/sql-statements/sql-statement-create-table.md)
+- [DROP TABLE](/sql-statements/sql-statement-drop-table.md)
+- [SHOW CREATE TABLE](/sql-statements/sql-statement-show-create-table.md)

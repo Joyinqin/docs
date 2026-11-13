@@ -41,7 +41,7 @@ TiDB supports both primary keys and secondary indexes (both unique and non-uniqu
 For primary keys and unique indexes, it is needed to quickly locate the corresponding `RowID` based on the key-value pair, so such a key-value pair is encoded as follows.
 
 ```
-Key:   tablePrefix{tableID}_indexPrefixSep{indexID}_indexedColumnsValue
+Key:   tablePrefix{TableID}_indexPrefixSep{IndexID}_indexedColumnsValue
 Value: RowID
 ```
 
@@ -125,7 +125,7 @@ The simplest solution to SQL computing is the [mapping of table data to Key-Valu
 
 For example, to execute the `select count(*) from user where name = "TiDB"` SQL statement, TiDB needs to read all data in the table, then checks whether the `name` field is `TiDB`, and if so, returns this row. The process is as follows:
 
-1. Construct the Key Range: all `RowID` in a table are in `[0,  MaxInt64)` range. According to the row data `Key` encoding rule, using `0` and `MaxInt64` can construct a `[StartKey, EndKey)` range that is left-closed and right-open.
+1. Construct the Key Range: all `RowID` in a table are in `[0, MaxInt64)` range. According to the row data `Key` encoding rule, using `0` and `MaxInt64` can construct a `[StartKey, EndKey)` range that is left-closed and right-open.
 2. Scan Key Range: read the data in TiKV according to the key range constructed above.
 3. Filter data: for each row of data read, calculate the `name = "TiDB"` expression. If the result is `true`, return to this row. If not, skip this row.
 4. Calculate `Count(*)`: for each row that meets the requirements, add up to the result of `Count(*)`.
@@ -138,7 +138,7 @@ This solution is intuitive and feasible, but has some obvious problems in a dist
 
 - As the data is being scanned, each row is read from TiKV via a KV operation with at least one RPC overhead, which can be very high if there is a large amount of data to be scanned.
 - It is not applicable to all rows. Data that does not meet the conditions does not need to be read.
-- The value of the rows that meets the conditions is meaningless. In fact, all needed here is just the number of rows.
+- From the returned result of this query, only the number of rows that match the requirements is needed, not the value of those rows.
 
 ### Distributed SQL operations
 

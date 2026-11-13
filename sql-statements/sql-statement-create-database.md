@@ -22,6 +22,17 @@ DBName ::=
 
 DatabaseOptionListOpt ::=
     DatabaseOptionList?
+
+DatabaseOptionList ::=
+    DatabaseOption ( ','? DatabaseOption )*
+
+DatabaseOption ::=
+    DefaultKwdOpt ( CharsetKw '='? CharsetName | 'COLLATE' '='? CollationName | 'ENCRYPTION' '='? EncryptionOpt )
+|   DefaultKwdOpt PlacementPolicyOption
+
+PlacementPolicyOption ::=
+    "PLACEMENT" "POLICY" EqOpt PolicyName
+|   "PLACEMENT" "POLICY" (EqOpt | "SET") "DEFAULT"
 ```
 
 ## Syntax
@@ -37,7 +48,7 @@ create_specification:
   | [DEFAULT] COLLATE [=] collation_name
 ```
 
-If you create an existing database and does not specify `IF NOT EXISTS`, an error is displayed.
+If you create an existing database without specifying `IF NOT EXISTS`, an error is displayed.
 
 The `create_specification` option is used to specify the specific `CHARACTER SET` and `COLLATE` in the database. Currently, TiDB only supports some of the character sets and collations. For details, see [Character Set and Collation Support](/character-set-and-collation.md).
 
@@ -63,7 +74,7 @@ mysql> SHOW TABLES;
 
 ## MySQL compatibility
 
-This statement is understood to be fully compatible with MySQL. Any compatibility differences should be [reported via an issue](https://github.com/pingcap/tidb/issues/new/choose) on GitHub.
+The `CREATE DATABASE` statement in TiDB is fully compatible with MySQL. If you find any compatibility differences, [report a bug](https://docs.pingcap.com/tidb/stable/support).
 
 ## See also
 

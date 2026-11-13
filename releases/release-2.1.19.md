@@ -1,6 +1,7 @@
 ---
 title: TiDB 2.1.19 Release Notes
 aliases: ['/docs/dev/releases/release-2.1.19/','/docs/dev/releases/2.1.19/']
+summary: TiDB 2.1.19 was released on December 27, 2019. It includes various fixes and optimizations for SQL optimizer, SQL execution engine, server, DDL, TiKV, PD, and TiDB Ansible. Some notable fixes include resolving incorrect query results, memory overhead reduction, and fixing issues related to timezone, data duplication, and panic occurrences. The release also includes upgrades and optimizations for TiDB Binlog and TiDB Ansible.
 ---
 
 # TiDB 2.1.19 Release Notes
@@ -17,7 +18,7 @@ TiDB Ansible version: 2.1.19
     - Optimize the scenario of `select max(_tidb_rowid) from t` to avoid full table scan [#13294](https://github.com/pingcap/tidb/pull/13294)
     - Fix the incorrect results caused by the incorrect value assigned to the user variable in the query and the push-down of predicates [#13230](https://github.com/pingcap/tidb/pull/13230)
     - Fix the issue that the statistics are not accurate because a data race occurs when statistics are updated [#13690](https://github.com/pingcap/tidb/pull/13690)
-    - Fix the issue that the result is incorrect when the `UPDATE` statement contains both a sub-query and a stored generated column; fix the `UPDATE` statement execution error when this statement contains two same-named tables from different databases [#13357](https://github.com/pingcap/tidb/pull/13357)
+    - Fix the issue that the result is incorrect when the `UPDATE` statement contains both a subquery and a stored generated column; fix the `UPDATE` statement execution error when this statement contains two same-named tables from different databases [#13357](https://github.com/pingcap/tidb/pull/13357)
     - Fix the issue that the query plan might be incorrectly selected because the `PhysicalUnionScan` operator incorrectly sets the statistics [#14134](https://github.com/pingcap/tidb/pull/14134)
     - Remove the `minAutoAnalyzeRatio` constraint to make the automatic `ANALYZE` more timely [#14013](https://github.com/pingcap/tidb/pull/14013)
     - Fix the issue that the estimated number of rows is greater than `1` when the `WHERE` clause contains an equal condition on the unique key [#13385](https://github.com/pingcap/tidb/pull/13385)
@@ -58,9 +59,9 @@ TiDB Ansible version: 2.1.19
     - Add the `server-version` configuration item to control and modify the version of TiDB server [#13904](https://github.com/pingcap/tidb/pull/13904)
     - Fix the issue that the binary `plugin` compiled with Go1.13 does not run normally [#13527](https://github.com/pingcap/tidb/pull/13527)
 + DDL
-    - Use the table’s `COLLATE` instead of the system’s default charset in the column when a table is created and the table contains `COLLATE` [#13190](https://github.com/pingcap/tidb/pull/13190)
+    - Use the table's `COLLATE` instead of the system's default charset in the column when a table is created and the table contains `COLLATE` [#13190](https://github.com/pingcap/tidb/pull/13190)
     - Limit the length of the index name when creating a table [#13311](https://github.com/pingcap/tidb/pull/13311)
-    - Fix the issue that the length of  the table name is not checked when renaming a table [#13345](https://github.com/pingcap/tidb/pull/13345)
+    - Fix the issue that the length of the table name is not checked when renaming a table [#13345](https://github.com/pingcap/tidb/pull/13345)
     - Check the width range of the `BIT` column [#13511](https://github.com/pingcap/tidb/pull/13511)
     - Make the error information output from `change/modify column` more understandable [#13798](https://github.com/pingcap/tidb/pull/13798)
     - Fix the issue that when executing the `drop column` operation that has not yet been handled by the downstream Drainer, the downstream might receive DML operations without the affected column [#13974](https://github.com/pingcap/tidb/pull/13974)
@@ -84,7 +85,7 @@ TiDB Ansible version: 2.1.19
     - Fix the panic occurred because of the `nil` value in the Drainer filter configuration [#802](https://github.com/pingcap/tidb-binlog/pull/802)
     - Optimize the `Graceful` exit of Pump [#825](https://github.com/pingcap/tidb-binlog/pull/825)
     - Add more detailed monitoring metrics when Pump writes binlog data [#830](https://github.com/pingcap/tidb-binlog/pull/830)
-    - Optimize Drainer’s logic to refresh table information after Drainer has executed a DDL operation [#836](https://github.com/pingcap/tidb-binlog/pull/836)
+    - Optimize Drainer's logic to refresh table information after Drainer has executed a DDL operation [#836](https://github.com/pingcap/tidb-binlog/pull/836)
     - Fix the issue that the commit binlog of a DDL operation is ignored when Pump does not receive this binlog [#855](https://github.com/pingcap/tidb-binlog/pull/855)
 
 ## TiDB Ansible

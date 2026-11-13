@@ -12,11 +12,17 @@ This statement copies the definition of an existing table, without copying any d
 
 ```ebnf+diagram
 CreateTableLikeStmt ::=
-    'CREATE' OptTemporary 'TABLE' IfNotExists TableName LikeTableWithOrWithoutParen
+    'CREATE' OptTemporary 'TABLE' IfNotExists TableName LikeTableWithOrWithoutParen OnCommitOpt
+
+OptTemporary ::=
+    ( 'TEMPORARY' | ('GLOBAL' 'TEMPORARY') )?
 
 LikeTableWithOrWithoutParen ::=
     'LIKE' TableName
 |   '(' 'LIKE' TableName ')'
+
+OnCommitOpt ::=
+    ('ON' 'COMMIT' 'DELETE' 'ROWS')?
 ```
 
 ## Examples
@@ -54,7 +60,7 @@ If the table to be copied is defined with the `PRE_SPLIT_REGIONS` attribute, the
 
 ## MySQL compatibility
 
-This statement is understood to be fully compatible with MySQL. Any compatibility differences should be [reported via an issue](https://github.com/pingcap/tidb/issues/new/choose) on GitHub.
+The `CREATE TABLE LIKE` statement in TiDB is fully compatible with MySQL. If you find any compatibility differences, [report a bug](https://docs.pingcap.com/tidb/stable/support).
 
 ## See also
 

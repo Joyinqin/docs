@@ -8,10 +8,9 @@ aliases: ['/docs/dev/enable-tls-between-components/','/docs/dev/how-to/secure/en
 
 This document describes how to enable encrypted data transmission between components within a TiDB cluster. Once enabled, encrypted transmission is used between the following components:
 
-- TiDB and TiKV; TiDB and PD
-- TiKV and PD
+- Communication between TiDB, TiKV, PD, and TiFlash
 - TiDB Control and TiDB; TiKV Control and TiKV; PD Control and PD
-- Internal communication within each TiKV, PD, TiDB cluster
+- Internal communication within each TiDB, TiKV, PD, and TiFlash cluster
 
 Currently, it is not supported to only enable encrypted transmission of some specific components.
 
@@ -23,7 +22,17 @@ Currently, it is not supported to only enable encrypted transmission of some spe
 
     You can use tools like `openssl`, `easy-rsa` and `cfssl` to generate self-signed certificates.
 
+    <CustomContent platform="tidb">
+
     If you choose `openssl`, you can refer to [generating self-signed certificates](/generate-self-signed-certificates.md).
+
+    </CustomContent>
+
+    <CustomContent platform="tidb-cloud">
+
+    If you choose `openssl`, you can refer to [generating self-signed certificates](https://docs.pingcap.com/tidb/stable/generate-self-signed-certificates).
+
+    </CustomContent>
 
 2. Configure certificates.
 
@@ -75,9 +84,9 @@ Currently, it is not supported to only enable encrypted transmission of some spe
 
     - TiFlash (New in v4.0.5)
 
-        Configure in the `tiflash.toml` file, and change the `http_port` item to `https_port`:
+        Configure in the `tiflash.toml` file:
 
-         ```toml
+        ```toml
         [security]
         ## The path for certificates. An empty string means that secure connections are disabled.
         # Path of the file that contains a list of trusted SSL CAs. If it is set, the following settings `cert_path` and `key_path` are also needed.
@@ -102,7 +111,16 @@ Currently, it is not supported to only enable encrypted transmission of some spe
 
     - TiCDC
 
-        Configure in the command-line arguments and set the corresponding URL to `https`:
+        Configure in the configuration file:
+
+        ```toml
+        [security]
+        ca-path = "/path/to/ca.pem"
+        cert-path = "/path/to/cdc-server.pem"
+        key-path = "/path/to/cdc-server-key.pem"
+        ```
+
+        Alternatively, configure in the command-line arguments and set the corresponding URL to `https`:
 
         {{< copyable "shell-regular" >}}
 
@@ -110,11 +128,23 @@ Currently, it is not supported to only enable encrypted transmission of some spe
         cdc server --pd=https://127.0.0.1:2379 --log-file=ticdc.log --addr=0.0.0.0:8301 --advertise-addr=127.0.0.1:8301 --ca=/path/to/ca.pem --cert=/path/to/ticdc-cert.pem --key=/path/to/ticdc-key.pem
         ```
 
+    - TiProxy
+
+        Configure in the configuration file, and set the corresponding URL to `https`:
+
+        ```toml
+        [security]
+            [server-http-tls]
+            ca = "/path/to/ca.pem"
+            cert = "/path/to/tiproxy-server.pem"
+            key = "/path/to/tiproxy-server-key.pem"
+        ```
+
         Now, encrypted transmission among TiDB components is enabled.
 
     > **Note:**
     >
-    > After enabling encrypted transmission in a TiDB cluster, if you need to connect to the cluster using tidb-ctl, tikv-ctl, or pd-ctl, specify the client certificate. For example:
+    > After enabling encrypted transmission in a TiDB cluster, if you need to connect to the cluster using tidb-ctl, tikv-ctl, pd-ctl, or tiproxyctl, specify the client certificate. For example:
 
     {{< copyable "shell-regular" >}}
 
@@ -125,7 +155,7 @@ Currently, it is not supported to only enable encrypted transmission of some spe
     {{< copyable "shell-regular" >}}
 
     ```bash
-    ./pd-ctl -u https://127.0.0.1:2379 --cacert /path/to/ca.pem --cert /path/to/client.pem --key /path/to/client-key.pem
+    tiup ctl:v<CLUSTER_VERSION> pd -u https://127.0.0.1:2379 --cacert /path/to/ca.pem --cert /path/to/client.pem --key /path/to/client-key.pem
     ```
 
     {{< copyable "shell-regular" >}}
@@ -136,9 +166,14 @@ Currently, it is not supported to only enable encrypted transmission of some spe
 
 ### Verify component caller's identity
 
-The Common Name is used for caller verification. In general, the callee needs to verify the caller's identity, in addition to verifying the key, the certificates, and the CA provided by the caller. For example, TiKV can only be accessed by TiDB, and other visitors are blocked even though they have legitimate certificates.
+In general, the callee needs to verify the caller's identity using `Common Name`, in addition to verifying the key, the certificates, and the CA provided by the caller. For example, TiKV can only be accessed by TiDB, and other visitors are blocked even though they have legitimate certificates.
 
-To verify component caller's identity, you need to mark the certificate user identity using `Common Name` when generating the certificate, and to check the caller's identity by configuring the `Common Name` list for the callee.
+To verify the caller's identity for a component, you need to mark the certificate user identity using `Common Name` when generating the certificate, and check the caller's identity by configuring `cluster-verify-cn` (in TiDB) or `cert-allowed-cn` (in other components) for the callee.
+
+> **Note:**
+>
+> - Starting from v8.4.0, the PD configuration item `cert-allowed-cn` supports multiple values. You can configure multiple `Common Name` in the `cluster-verify-cn` configuration item for TiDB and in the `cert-allowed-cn` configuration item for other components as needed. Note that TiUP uses a separate identifier when querying component status. For example, if the cluster name is `test`, TiUP uses `test-client` as the `Common Name`.
+> - For v8.3.0 and earlier versions, the PD configuration item `cert-allowed-cn` can only be set to a single value. Therefore, the `Common Name` of all authentication objects must be set to the same value. For related configuration examples, see [v8.3.0 documentation](https://docs-archive.pingcap.com/tidb/v8.3/enable-tls-between-components/).
 
 - TiDB
 
@@ -146,10 +181,7 @@ To verify component caller's identity, you need to mark the certificate user ide
 
     ```toml
     [security]
-    cluster-verify-cn = [
-        "TiDB-Server",
-        "TiKV-Control",
-    ]
+    cluster-verify-cn = ["tidb", "tiproxy", "test-client", "prometheus"]
     ```
 
 - TiKV
@@ -158,9 +190,7 @@ To verify component caller's identity, you need to mark the certificate user ide
 
     ```toml
     [security]
-    cert-allowed-cn = [
-        "TiDB-Server", "PD-Server", "TiKV-Control", "RawKvClient1",
-    ]
+    cert-allowed-cn = ["tidb", "pd", "tikv", "tiflash", "prometheus"]
     ```
 
 - PD
@@ -169,17 +199,7 @@ To verify component caller's identity, you need to mark the certificate user ide
 
     ```toml
     [security]
-    cert-allowed-cn = ["TiKV-Server", "TiDB-Server", "PD-Control"]
-    ```
-
-- TiCDC
-
-    Configure in the command-line arguments:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    cdc server --pd=https://127.0.0.1:2379 --log-file=ticdc.log --addr=0.0.0.0:8301 --advertise-addr=127.0.0.1:8301 --ca=/path/to/ca.pem --cert=/path/to/ticdc-cert.pem --key=/path/to/ticdc-key.pem --cert-allowed-cn="client1,client2"
+    cert-allowed-cn = ["tidb", "pd", "tikv", "tiflash", "tiproxy", "test-client", "prometheus"]
     ```
 
 - TiFlash (New in v4.0.5)
@@ -188,19 +208,71 @@ To verify component caller's identity, you need to mark the certificate user ide
 
     ```toml
     [security]
-    cert_allowed_cn = ["TiKV-Server", "TiDB-Server"]
+    cert_allowed_cn = ["tidb", "tikv", "prometheus"]
     ```
 
     Configure in the `tiflash-learner.toml` file:
 
     ```toml
     [security]
-    cert-allowed-cn = ["PD-Server", "TiKV-Server", "TiFlash-Server"]
+    cert-allowed-cn = ["tidb", "tikv", "tiflash", "prometheus"]
     ```
-    
-### Reload certificates
 
-To reload the certificates and the keys, TiDB, PD, TiKV, and all kinds of clients reread the current certificates and the key files each time a new connection is created. Currently, you cannot reload the CA certificate.
+- TiProxy (New in v1.4.0)
+
+    Configure in the configuration file:
+
+    ```toml
+    [security]
+        [server-http-tls]
+        cert-allowed-cn = ["tiproxy", "tidb", "test-client", "prometheus"]
+    ```
+
+## Validate TLS between TiDB components
+
+After configuring TLS for communication between TiDB components, you can use the following commands to verify that TLS has been successfully enabled. These commands print the certificate and TLS handshake details for each component.
+
+- TiDB
+
+    ```sh
+    openssl s_client -connect <tidb_host>:10080 -cert /path/to/client.pem -key /path/to/client-key.pem -CAfile ./ca.crt < /dev/null
+    ```
+
+- PD
+
+    ```sh
+    openssl s_client -connect <pd_host>:2379 -cert /path/to/client.pem -key /path/to/client-key.pem -CAfile ./ca.crt < /dev/null
+    ```
+
+- TiKV
+
+    ```sh
+    openssl s_client -connect <tikv_host>:20160 -cert /path/to/client.pem -key /path/to/client-key.pem -CAfile ./ca.crt < /dev/null
+    ```
+
+- TiFlash (New in v4.0.5)
+
+    ```sh
+    openssl s_client -connect <tiflash_host>:<tiflash_port> -cert /path/to/client.pem -key /path/to/client-key.pem -CAfile ./ca.crt < /dev/null
+    ```
+
+- TiProxy
+
+    ```sh
+    openssl s_client -connect <tiproxy_host>:3080 -cert /path/to/client.pem -key /path/to/client-key.pem -CAfile ./ca.crt < /dev/null
+    ```
+
+## Reload certificates
+
+- If your TiDB cluster is deployed in a local data center, to reload the certificates and keys, TiDB, PD, TiKV, TiFlash, TiCDC, and all kinds of clients reread the current certificates and key files each time a new connection is created, without restarting the TiDB cluster.
+
+- TiProxy reloads certificates from disk once an hour.
+
+- If your TiDB cluster is deployed on your own managed cloud, make sure that the issuance of TLS certificates is integrated with the certificate management service of the cloud provider. The TLS certificates of the TiDB, PD, TiKV, TiFlash, TiCDC, and TiProxy components can be automatically rotated without restarting the TiDB cluster.
+
+## Certificate validity
+
+You can customize the validity period of TLS certificates for each component in a TiDB cluster. For example, when using OpenSSL to issue and generate TLS certificates, you can set the validity period via the **days** parameter. For more information, see [Generate self-signed certificates](/generate-self-signed-certificates.md).
 
 ## See also
 

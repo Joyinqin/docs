@@ -1,6 +1,7 @@
 ---
 title: TiDB 4.0 GA Release Notes
 aliases: ['/docs/dev/releases/release-4.0-ga/']
+summary: TiDB 4.0.0 GA was released on May 28, 2020. This version optimized error messages for large-sized transactions, improved usability of `Changefeed` configuration file, added new configuration items and support for various syntax and functions, fixed multiple bugs and issues in TiKV, TiFlash, PD, and Tools, added new monitoring items and support for various features in PD, and fixed various issues in Backup & Restore (BR) and TiCDC.
 ---
 
 # TiDB 4.0 GA Release Notes
@@ -15,14 +16,14 @@ TiDB version: 4.0.0
     - Optimize the error message of the large-sized transactions for easier troubleshooting [#17219](https://github.com/pingcap/tidb/pull/17219)
 
 * TiCDC
-    - Optimize the structure of the `Changefeed` configuration file to improve usability [#588](https://github.com/pingcap/ticdc/pull/588)
-    - Add the `ignore-txn-start-ts` configuration item, and change the condition from `commit_ts` to `start_ts` during transactions filtering [#589](https://github.com/pingcap/ticdc/pull/589)
+    - Optimize the structure of the `Changefeed` configuration file to improve usability [#588](https://github.com/pingcap/tiflow/pull/588)
+    - Add the `ignore-txn-start-ts` configuration item, and change the condition from `commit_ts` to `start_ts` during transactions filtering [#589](https://github.com/pingcap/tiflow/pull/589)
 
 ## Important Bug Fixes
 
 * TiKV
     - Fix the `DefaultNotFound` error that occurs when backing up using Backup & Restore (BR) [#7937](https://github.com/tikv/tikv/pull/7937)
-    - Fix system panics caused by the out-of-order `ReadIndex` packages [#7930](https://github.com/tikv/tikv/pull/7930)
+    - Fix system panics caused by the out-of-order `ReadIndex` packets [#7930](https://github.com/tikv/tikv/pull/7930)
     - Fix system panics caused by incorrectly removing snapshot files after TiKV is restarted [#7927](https://github.com/tikv/tikv/pull/7927)
 
 * TiFlash
@@ -58,10 +59,10 @@ TiDB version: 4.0.0
     + Backup & Restore (BR)
         - Support the backup and restore of `Sequence` and `View` [#242](https://github.com/pingcap/br/pull/242)
     + TiCDC
-        - Support checking the validity of `Sink URI` when creating `Changefeed` [#561](https://github.com/pingcap/ticdc/pull/561)
-        - Support checking whether the PD and TiKV versions meet the system requirements during system startup [#570](https://github.com/pingcap/ticdc/pull/570)
-        - Support scheduling multiple tables in the same scheduling task generation cycle [#572](https://github.com/pingcap/ticdc/pull/572)
-        - Add information about node roles in HTTP API [#591](https://github.com/pingcap/ticdc/pull/591)
+        - Support checking the validity of `Sink URI` when creating `Changefeed` [#561](https://github.com/pingcap/tiflow/pull/561)
+        - Support checking whether the PD and TiKV versions meet the system requirements during system startup [#570](https://github.com/pingcap/tiflow/pull/570)
+        - Support scheduling multiple tables in the same scheduling task generation cycle [#572](https://github.com/pingcap/tiflow/pull/572)
+        - Add information about node roles in HTTP API [#591](https://github.com/pingcap/tiflow/pull/591)
 
 ## Bug Fixes
 
@@ -85,7 +86,7 @@ TiDB version: 4.0.0
 
 * TiFlash
 
-    - Fix the issue that the matching behavior of regular expressions in the  search log feature is inconsistent with other components
+    - Fix the issue that the matching behavior of regular expressions in the search log feature is inconsistent with other components
     - Fix the issue of excessive restart time when nodes write large amounts of data by disabling the delay processing optimization of `Raft Compact Log Command` by default
     - Fix the issue that the system fails to start because TiDB incorrectly processes the `DROP DATABASE` statement in some scenarios
     - Fix the issue that the method of collecting CPU information in `Server_info` is different from that in other components
@@ -111,6 +112,6 @@ TiDB version: 4.0.0
     + Backup & Restore (BR)
         - Fix the issue that the data restoration fails due to network issues when BR restores data from cloud storage [#298](https://github.com/pingcap/br/pull/298)
     + TiCDC
-        - Fix system panics caused by data race [#565](https://github.com/pingcap/ticdc/pull/565) [#566](https://github.com/pingcap/ticdc/pull/566)
-        - Fix resource leaks or system blockages caused by incorrect processing logic [#574](https://github.com/pingcap/ticdc/pull/574) [#586](https://github.com/pingcap/ticdc/pull/586)
-        - Fix the issue that the command line gets stuck because CLI cannot connect to PD [#579](https://github.com/pingcap/ticdc/pull/579)
+        - Fix system panics caused by data race [#565](https://github.com/pingcap/tiflow/pull/565) [#566](https://github.com/pingcap/tiflow/pull/566)
+        - Fix resource leaks or system blockages caused by incorrect processing logic [#574](https://github.com/pingcap/tiflow/pull/574) [#586](https://github.com/pingcap/tiflow/pull/586)
+        - Fix the issue that the command line gets stuck because CLI cannot connect to PD [#579](https://github.com/pingcap/tiflow/pull/579)

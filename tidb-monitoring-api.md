@@ -6,15 +6,14 @@ aliases: ['/docs/dev/tidb-monitoring-api/']
 
 # TiDB Monitoring API
 
-You can use the following two types of interfaces to monitor the TiDB cluster state:
+You can use the following types of interfaces to monitor the TiDB cluster status:
 
-- [The state interface](#running-status): this interface uses the HTTP interface to get the component information.
-- [Storage information](#storage-information): this interface uses the HTTP interface to get the storage information of data tables.
+- [The status interface](#use-the-status-interface): this interface uses the HTTP interface to get the component information. Using this interface, you can get the [running status](#running-status) of the current TiDB server and the [storage information](#storage-information) of a table.
 - [The metrics interface](#use-the-metrics-interface): this interface uses Prometheus to record the detailed information of the various operations in components and views these metrics using Grafana.
 
-## Use the state interface
+## Use the status interface
 
-The state interface monitors the basic information of a specific component in the TiDB cluster. It can also act as the monitor interface for Keepalive messages. In addition, the state interface for the Placement Driver (PD) can get the details of the entire TiKV cluster.
+The status interface monitors the basic information of a specific component in the TiDB cluster. It can also act as the monitor interface for Keepalive messages. In addition, the status interface for the Placement Driver (PD) can get the details of the entire TiKV cluster.
 
 ### TiDB server
 
@@ -23,13 +22,13 @@ The state interface monitors the basic information of a specific component in th
 
 ### Running status
 
-The following example uses `http://${host}:${port}/status` to get the current state of the TiDB server and to determine whether the server is alive. The result is returned in **JSON** format.
+The following example uses `http://${host}:${port}/status` to get the current status of the TiDB server and to determine whether the server is alive. The result is returned in **JSON** format.
 
 ```bash
 curl http://127.0.0.1:10080/status
 {
     connections: 0,  # The current number of clients connected to the TiDB server.
-    version: "5.7.25-TiDB-v3.0.0-beta-250-g778c3f4a5",  # The TiDB version number.
+    version: "8.0.11-TiDB-v8.5.0",  # The TiDB version number.
     git_hash: "778c3f4a5a716880bcd1d71b257c8165685f0d70"  # The Git Hash of the current TiDB code.
 }
 ```
@@ -46,13 +45,13 @@ curl http://127.0.0.1:10080/schema_storage/mysql/stats_histograms
 
 ```
 {
-    "table_schema": "mysql", 
-    "table_name": "stats_histograms", 
-    "table_rows": 0, 
-    "avg_row_length": 0, 
-    "data_length": 0, 
-    "max_data_length": 0, 
-    "index_length": 0, 
+    "table_schema": "mysql",
+    "table_name": "stats_histograms",
+    "table_rows": 0,
+    "avg_row_length": 0,
+    "data_length": 0,
+    "max_data_length": 0,
+    "index_length": 0,
     "data_free": 0
 }
 ```
@@ -64,13 +63,13 @@ curl http://127.0.0.1:10080/schema_storage/test
 ```
 [
     {
-        "table_schema": "test", 
-        "table_name": "test", 
-        "table_rows": 0, 
-        "avg_row_length": 0, 
-        "data_length": 0, 
-        "max_data_length": 0, 
-        "index_length": 0, 
+        "table_schema": "test",
+        "table_name": "test",
+        "table_rows": 0,
+        "avg_row_length": 0,
+        "data_length": 0,
+        "max_data_length": 0,
+        "index_length": 0,
         "data_free": 0
     }
 ]
@@ -80,9 +79,9 @@ curl http://127.0.0.1:10080/schema_storage/test
 
 - PD API address: `http://${host}:${port}/pd/api/v1/${api_name}`
 - Default port: `2379`
-- Details about API names: see [PD API doc](https://download.pingcap.com/pd-api-v1.html)
+- Details about API names: see [PD API doc](https://docs-download.pingcap.com/api/pd-api/pd-api-v1.html)
 
-The PD interface provides the state of all the TiKV servers and the information about load balancing. See the following example for the information about a single-node TiKV cluster:
+The PD interface provides the status of all the TiKV servers and the information about load balancing. See the following example for the information about a single-node TiKV cluster:
 
 ```bash
 curl http://127.0.0.1:2379/pd/api/v1/stores
@@ -118,7 +117,7 @@ curl http://127.0.0.1:2379/pd/api/v1/stores
 
 ## Use the metrics interface
 
-The metrics interface monitors the state and performance of the entire TiDB cluster.
+The metrics interface monitors the status and performance of the entire TiDB cluster.
 
 - If you use other deployment ways, [deploy Prometheus and Grafana](/deploy-monitoring-services.md) before using this interface.
 

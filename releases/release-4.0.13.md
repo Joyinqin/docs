@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.13 Release Notes
+summary: TiDB 4.0.13 was released on May 28, 2021. New features include support for changing `AUTO_INCREMENT` to `AUTO_RANDOM` and the addition of `infoschema.client_errors_summary` tables. Improvements were made to TiDB, TiKV, PD, TiFlash, and Tools. Bug fixes were also implemented for TiDB, TiKV, TiFlash, and Tools, addressing various issues such as query results, panics, and memory usage.
 ---
 
 # TiDB 4.0.13 Release Notes
@@ -46,9 +47,9 @@ TiDB version: 4.0.13
 
     + TiCDC
 
-        - Implement the processor flow control to avoid memory overflow (OOM) [#1751](https://github.com/pingcap/ticdc/pull/1751)
-        - Support cleaning up stale temporary files in Unified Sorter and prevent multiple `cdc server` instances from sharing the same `sort-dir` directory [#1741](https://github.com/pingcap/ticdc/pull/1741)
-        - Add the HTTP handler for the failpoint [#1732](https://github.com/pingcap/ticdc/pull/1732)
+        - Implement the processor flow control to avoid memory overflow (OOM) [#1751](https://github.com/pingcap/tiflow/pull/1751)
+        - Support cleaning up stale temporary files in Unified Sorter and prevent multiple `cdc server` instances from sharing the same `sort-dir` directory [#1741](https://github.com/pingcap/tiflow/pull/1741)
+        - Add the HTTP handler for the failpoint [#1732](https://github.com/pingcap/tiflow/pull/1732)
 
 ## Bug Fixes
 
@@ -79,7 +80,7 @@ TiDB version: 4.0.13
     - Fix the issue that no error is reported when inserting invalid strings to the `DECIMAL` type column [#23196](https://github.com/pingcap/tidb/pull/23196)
     - Fix the issue of parsing error occurred when inserting data to the `DECIMAL` type columns [#23152](https://github.com/pingcap/tidb/pull/23152)
     - Fix the issue that the `USE_INDEX_MERGE` hint does not take effect [#22924](https://github.com/pingcap/tidb/pull/22924)
-    - Fix a bug that the query returns wrong results when using `ENUM` or `SET` columns in the `WHERE` clause as an filter [#22814](https://github.com/pingcap/tidb/pull/22814)
+    - Fix a bug that the query returns wrong results when using `ENUM` or `SET` columns in the `WHERE` clause as a filter [#22814](https://github.com/pingcap/tidb/pull/22814)
     - Fix a bug that the query returns wrong results when using the clustered index and the new collation at the same time [#21408](https://github.com/pingcap/tidb/pull/21408)
     - Fix the panic that occurs when executing `ANALYZE` with `enable_new_collation` enabled [#21299](https://github.com/pingcap/tidb/pull/21299)
     - Fix the issue that SQL views does not correctly handle the default roles associated with the SQL DEFINER [#24531](https://github.com/pingcap/tidb/pull/24531)
@@ -133,9 +134,9 @@ TiDB version: 4.0.13
 
     + TiCDC
 
-        - Fix the deadlock issue caused by the flow control when the sorter's input channel has been blocked [#1779](https://github.com/pingcap/ticdc/pull/1779)
-        - Fix the issue that the TiKV GC safe point is blocked due to the stagnation of TiCDC changefeed checkpoint [#1756](https://github.com/pingcap/ticdc/pull/1756)
-        - Revert the update in `explicit_defaults_for_timestamp` which requires the `SUPER` privilege when replicating data to MySQL [#1749](https://github.com/pingcap/ticdc/pull/1749)
+        - Fix the deadlock issue caused by the flow control when the sorter's input channel has been blocked [#1779](https://github.com/pingcap/tiflow/pull/1779)
+        - Fix the issue that the TiKV GC safe point is blocked due to the stagnation of TiCDC changefeed checkpoint [#1756](https://github.com/pingcap/tiflow/pull/1756)
+        - Revert the update in `explicit_defaults_for_timestamp` which requires the `SUPER` privilege when replicating data to MySQL [#1749](https://github.com/pingcap/tiflow/pull/1749)
 
     + TiDB Lightning
 

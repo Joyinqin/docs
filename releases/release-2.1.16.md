@@ -1,6 +1,7 @@
 ---
 title: TiDB 2.1.16 Release Notes
 aliases: ['/docs/dev/releases/release-2.1.16/','/docs/dev/releases/2.1.16/']
+summary: TiDB 2.1.16 was released on August 15, 2019. It includes various fixes and improvements to the SQL optimizer, SQL execution engine, server, DDL, TiKV, TiDB Binlog, TiDB Lightning, and TiDB Ansible. Some notable changes include support for subqueries within SHOW statements, fixing issues with DATE_ADD function, and adding configuration items in Drainer for TiDB Binlog.
 ---
 
 # TiDB 2.1.16 Release Notes
@@ -27,7 +28,7 @@ TiDB Ansible version: 2.1.16
     - Support `SPLIT TABLE` statements that return the number of Regions that are successfully split and a finished percentage rather than an error when the scheduling is not finished for Region scatter before the timeout [#11487](https://github.com/pingcap/tidb/pull/11487)
     - Make `REGEXP BINARY` function case sensitive to be compatible with MySQL [#11505](https://github.com/pingcap/tidb/pull/11505)
     - Fix the issue that `NULL` is not returned correctly because the value of `YEAR` in the `DATE_ADD`/`DATE_SUB` result overflows when it is smaller than 0 or larger than 65535 [#11477](https://github.com/pingcap/tidb/pull/11477)
-    - Add in the slow query table a `Succ` field that indicates whether the execution succeeds [#11412](https://github.com/pingcap/tidb/pull/11421)
+    - Add in the slow query table a `Succ` field that indicates whether the execution succeeds [#11421](https://github.com/pingcap/tidb/pull/11421)
     - Fix the MySQL incompatibility issue caused by fetching the current timestamp multiple times when a SQL statement involves calculations of the current time (such as `CURRENT_TIMESTAMP` or `NOW`) [#11392](https://github.com/pingcap/tidb/pull/11392)
     - Fix the issue that the AUTO_INCREMENT columns do not handle the FLOAT or DOUBLE type [#11389](https://github.com/pingcap/tidb/pull/11389)
     - Fix the issue that `NULL` is not returned correctly when the `CONVERT_TZ` function accepts an invalid argument [#11357](https://github.com/pingcap/tidb/pull/11357)
@@ -53,7 +54,7 @@ TiDB Ansible version: 2.1.16
 + TiDB Binlog
     - Add the `ignore-txn-commit-ts` configuration item in Drainer to skip executing some statements in a transaction [#697](https://github.com/pingcap/tidb-binlog/pull/697)
     - Add the configuration item check on startup, which stops Pump and Drainer from running and returns an error message when meeting invalid configuration items [#708](https://github.com/pingcap/tidb-binlog/pull/708)
-    - Add the `node-id` configuration in Drainer to specify Drainer’s node ID [#706](https://github.com/pingcap/tidb-binlog/pull/706)
+    - Add the `node-id` configuration in Drainer to specify Drainer's node ID [#706](https://github.com/pingcap/tidb-binlog/pull/706)
 + TiDB Lightning
     - Fix the issue that `tikv_gc_life_time` fails to be changed back to its original value when 2 checksums are running at the same time [#224](https://github.com/pingcap/tidb-lightning/pull/224)
 

@@ -6,9 +6,7 @@ aliases: ['/docs/dev/deploy-monitoring-services/','/docs/dev/how-to/monitor/moni
 
 # Deploy Monitoring Services for the TiDB Cluster
 
-This document is intended for users who want to manually deploy TiDB monitoring and alert services.
-
-If you deploy the TiDB cluster using TiUP, the monitoring and alert services are automatically deployed, and no manual deployment is needed.
+This document is intended for users who want to manually deploy TiDB monitoring and alert services. If you deploy the TiDB cluster using TiUP, the monitoring and alert services are automatically deployed, and no manual deployment is needed. [TiDB Dashboard](/dashboard/dashboard-intro.md) is built into the PD component and does not require an independent deployment.
 
 ## Deploy Prometheus and Grafana
 
@@ -17,7 +15,7 @@ Assume that the TiDB cluster topology is as follows:
 | Name  | Host IP | Services |
 | :-- | :-- | :-------------- |
 | Node1 | 192.168.199.113| PD1, TiDB, node_export, Prometheus, Grafana |
-| Node2 | 192.168.199.114| PD2, node_export |
+| Node2 | 192.168.199.114| PD2, node_export  |
 | Node3 | 192.168.199.115| PD3, node_export |
 | Node4 | 192.168.199.116| TiKV1, node_export |
 | Node5 | 192.168.199.117| TiKV2, node_export |
@@ -29,18 +27,18 @@ Assume that the TiDB cluster topology is as follows:
 
 ```bash
 # Downloads the package.
-wget https://download.pingcap.org/prometheus-2.8.1.linux-amd64.tar.gz
-wget https://download.pingcap.org/node_exporter-0.17.0.linux-amd64.tar.gz
-wget https://download.pingcap.org/grafana-6.1.6.linux-amd64.tar.gz
+wget https://github.com/prometheus/prometheus/releases/download/v2.49.1/prometheus-2.49.1.linux-amd64.tar.gz
+wget https://download.pingcap.com/node_exporter-v1.3.1-linux-amd64.tar.gz
+wget https://download.pingcap.com/grafana-7.5.17.linux-amd64.tar.gz
 ```
 
 {{< copyable "shell-regular" >}}
 
 ```bash
 # Extracts the package.
-tar -xzf prometheus-2.8.1.linux-amd64.tar.gz
-tar -xzf node_exporter-0.17.0.linux-amd64.tar.gz
-tar -xzf grafana-6.1.6.linux-amd64.tar.gz
+tar -xzf prometheus-2.49.1.linux-amd64.tar.gz
+tar -xzf node_exporter-v1.3.1-linux-amd64.tar.gz
+tar -xzf grafana-7.5.17.linux-amd64.tar.gz
 ```
 
 ### Step 2: Start `node_exporter` on Node1, Node2, Node3, and Node4
@@ -48,7 +46,7 @@ tar -xzf grafana-6.1.6.linux-amd64.tar.gz
 {{< copyable "shell-regular" >}}
 
 ```bash
-cd node_exporter-0.17.0.linux-amd64
+cd node_exporter-v1.3.1-linux-amd64
 
 # Starts the node_exporter service.
 $ ./node_exporter --web.listen-address=":9100" \
@@ -62,7 +60,7 @@ Edit the Prometheus configuration file:
 {{< copyable "shell-regular" >}}
 
 ```bash
-cd prometheus-2.8.1.linux-amd64 &&
+cd prometheus-2.49.1.linux-amd64 &&
 vi prometheus.yml
 ```
 
@@ -112,7 +110,25 @@ scrape_configs:
       - '192.168.199.118:20180'
 
 ...
+```
 
+To enable alarm rules for components such as TiDB, PD, and TiKV, download the alarm rule files of the corresponding components separately, and then add the configurations of alarm rule files to the Prometheus configuration file.
+
+- TiDB: [`tidb.rules.yml`](https://github.com/pingcap/tidb/blob/master/pkg/metrics/alertmanager/tidb.rules.yml)
+- PD: [`pd.rules.yml`](https://github.com/tikv/pd/blob/master/metrics/alertmanager/pd.rules.yml)
+- TiKV: [`tikv.rules.yml`](https://github.com/tikv/tikv/blob/master/metrics/alertmanager/tikv.rules.yml)
+- TiFlash: [`tiflash.rules.yml`](https://github.com/pingcap/tiflash/blob/master/metrics/alertmanager/tiflash.rules.yml)
+- TiCDC: [`ticdc.rules.yml`](https://github.com/pingcap/tiflow/blob/master/metrics/alertmanager/ticdc.rules.yml)
+- TiDB Lightning: [`lightning.rules.yml`](https://github.com/pingcap/tidb/blob/master/br/metrics/alertmanager/lightning.rules.yml)
+
+```ini
+rule_files:
+  - 'tidb.rules.yml'
+  - 'pd.rules.yml'
+  - 'tikv.rules.yml'
+  - 'tiflash.rules.yml'
+  - 'ticdc.rules.yml'
+  - 'lightning.rules.yml'
 ```
 
 Start the Prometheus service:
@@ -135,7 +151,7 @@ Edit the Grafana configuration file:
 {{< copyable "shell-regular" >}}
 
 ```ini
-cd grafana-6.1.6 &&
+cd grafana-7.5.17 &&
 vi conf/grafana.ini
 
 ...
@@ -182,8 +198,10 @@ url = https://grafana.net
 
 Start the Grafana service:
 
+{{< copyable "shell-regular" >}}
+
 ```bash
-$ ./bin/grafana-server \
+./bin/grafana-server \
     --config="./conf/grafana.ini" &
 ```
 
@@ -224,7 +242,7 @@ To import a Grafana dashboard for the PD server, the TiKV server, and the TiDB s
 
 2. In the sidebar menu, click **Dashboards** -> **Import** to open the **Import Dashboard** window.
 
-3. Click **Upload .json File** to upload a JSON file (Download [TiDB Grafana configuration file](https://github.com/pingcap/tidb-ansible/tree/master/scripts)).
+3. Click **Upload .json File** to upload a JSON file (Download TiDB Grafana configuration files from [pingcap/tidb](https://github.com/pingcap/tidb/tree/master/pkg/metrics/grafana), [tikv/tikv](https://github.com/tikv/tikv/tree/master/metrics/grafana), and [tikv/pd](https://github.com/tikv/pd/tree/master/metrics/grafana)).
 
     > **Note:**
     >

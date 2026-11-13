@@ -7,7 +7,17 @@ summary: Learn how to use EXPLAIN by walking through an example statement
 
 Because SQL is a declarative language, you cannot automatically tell whether a query is executed efficiently. You must first use the [`EXPLAIN`](/sql-statements/sql-statement-explain.md) statement to learn the current execution plan.
 
-The following statement from the [bikeshare example database](/import-example-data.md) counts how many trips were taken on the July 1, 2017:
+<CustomContent platform="tidb">
+
+The following statement from the [bikeshare example database](/import-example-data.md) counts how many trips were taken on July 1, 2017:
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+The following statement from the [bikeshare example database](/tidb-cloud/import-sample-data.md) counts how many trips were taken on July 1, 2017:
+
+</CustomContent>
 
 {{< copyable "sql" >}}
 
@@ -63,7 +73,7 @@ EXPLAIN ANALYZE SELECT count(*) FROM trips WHERE start_date BETWEEN '2017-07-01 
 5 rows in set (1.03 sec)
 ```
 
-The example query above takes `1.03` seconds to execute, which is an ideal performance.
+The example query above takes `1.03` seconds to execute, which is not ideal performance.
 
 From the result of `EXPLAIN ANALYZE` above, `actRows` indicates that some of the estimates (`estRows`) are inaccurate (expecting 10 thousand rows but finding 19 million rows), which is already indicated in the `operator info` (`stats:pseudo`) of `└─TableFullScan_18`. If you run [`ANALYZE TABLE`](/sql-statements/sql-statement-analyze-table.md) first and then `EXPLAIN ANALYZE` again, you can see that the estimates are much closer:
 
@@ -128,13 +138,13 @@ SHOW CREATE TABLE trips\G
 *************************** 1. row ***************************
        Table: trips
 Create Table: CREATE TABLE `trips` (
-  `trip_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `duration` int(11) NOT NULL,
+  `trip_id` bigint NOT NULL AUTO_INCREMENT,
+  `duration` int NOT NULL,
   `start_date` datetime DEFAULT NULL,
   `end_date` datetime DEFAULT NULL,
-  `start_station_number` int(11) DEFAULT NULL,
+  `start_station_number` int DEFAULT NULL,
   `start_station` varchar(255) DEFAULT NULL,
-  `end_station_number` int(11) DEFAULT NULL,
+  `end_station_number` int DEFAULT NULL,
   `end_station` varchar(255) DEFAULT NULL,
   `bike_number` varchar(255) DEFAULT NULL,
   `member_type` varchar(255) DEFAULT NULL,
@@ -157,7 +167,7 @@ Query OK, 0 rows affected (2 min 10.23 sec)
 
 > **Note:**
 >
-> You can monitor the progress of DDL jobs using the [`ADMIN SHOW DDL JOBS`](/sql-statements/sql-statement-admin.md) command. The defaults in TiDB are carefully chosen so that adding an index does not impact production workloads too much. For testing environments, consider increasing the [`tidb_ddl_reorg_batch_size`](/system-variables.md#tidb_ddl_reorg_batch_size) and [`tidb_ddl_reorg_worker_cnt`](/system-variables.md#tidb_ddl_reorg_worker_cnt) values. On a reference system, a batch size of `10240` and worker count of `32` can achieve a 10x performance improvement over the defaults.
+> You can monitor the progress of DDL jobs using the [`ADMIN SHOW DDL JOBS`](/sql-statements/sql-statement-admin-show-ddl.md) command. The defaults in TiDB are carefully chosen so that adding an index does not impact production workloads too much. For testing environments, consider increasing the [`tidb_ddl_reorg_batch_size`](/system-variables.md#tidb_ddl_reorg_batch_size) and [`tidb_ddl_reorg_worker_cnt`](/system-variables.md#tidb_ddl_reorg_worker_cnt) values. On a reference system, a batch size of `10240` and worker count of `32` can achieve a 10x performance improvement over the defaults.
 
 After adding an index, you can then repeat the query in `EXPLAIN`. In the following output, you can see that a new execution plan is chosen, and the `TableFullScan` and `Selection` operators have been eliminated:
 
@@ -204,3 +214,55 @@ From the result above, the query time has reduced from 1.03 seconds to 0.0 secon
 > **Note:**
 >
 > Another optimization that applies here is the coprocessor cache. If you are unable to add indexes, consider enabling the [coprocessor cache](/coprocessor-cache.md). When it is enabled, as long as the Region has not been modified since the operator is last executed, TiKV will return the value from the cache. This will also help reduce much of the cost of the expensive `TableFullScan` and `Selection` operators.
+
+## Disable the early execution of subqueries
+
+During query optimization, TiDB pre-executes subqueries that can be directly calculated. For example:
+
+```sql
+CREATE TABLE t1(a int);
+INSERT INTO t1 VALUES(1);
+CREATE TABLE t2(a int);
+EXPLAIN SELECT * FROM t2 WHERE a = (SELECT a FROM t1);
+```
+
+```sql
++--------------------------+----------+-----------+---------------+--------------------------------+
+| id                       | estRows  | task      | access object | operator info                  |
++--------------------------+----------+-----------+---------------+--------------------------------+
+| TableReader_14           | 10.00    | root      |               | data:Selection_13              |
+| └─Selection_13           | 10.00    | cop[tikv] |               | eq(test.t2.a, 1)               |
+|   └─TableFullScan_12     | 10000.00 | cop[tikv] | table:t2      | keep order:false, stats:pseudo |
++--------------------------+----------+-----------+---------------+--------------------------------+
+3 rows in set (0.00 sec)
+```
+
+In the preceding example, the `a = (SELECT a FROM t1)` subquery is calculated during optimization and rewritten as `t2.a=1`. This allows more optimizations such as constant propagation and folding during optimization. However, it affects the execution time of the `EXPLAIN` statement. When the subquery itself takes a long time to execute, the `EXPLAIN` statement might not be completed, which could affect online troubleshooting.
+
+Starting from v7.3.0, TiDB introduces the [`tidb_opt_enable_non_eval_scalar_subquery`](/system-variables.md#tidb_opt_enable_non_eval_scalar_subquery-new-in-v730) system variable, which controls whether to disable the pre-execution of such subqueries in `EXPLAIN`. The default value of this variable is `OFF`, which means that the subquery is pre-calculated. You can set this variable to `ON` to disable the pre-execution of subqueries:
+
+```sql
+SET @@tidb_opt_enable_non_eval_scalar_subquery = ON;
+EXPLAIN SELECT * FROM t2 WHERE a = (SELECT a FROM t1);
+```
+
+```sql
++---------------------------+----------+-----------+---------------+---------------------------------+
+| id                        | estRows  | task      | access object | operator info                   |
++---------------------------+----------+-----------+---------------+---------------------------------+
+| Selection_13              | 8000.00  | root      |               | eq(test.t2.a, ScalarQueryCol#5) |
+| └─TableReader_15          | 10000.00 | root      |               | data:TableFullScan_14           |
+|   └─TableFullScan_14      | 10000.00 | cop[tikv] | table:t2      | keep order:false, stats:pseudo  |
+| ScalarSubQuery_10         | N/A      | root      |               | Output: ScalarQueryCol#5        |
+| └─MaxOneRow_6             | 1.00     | root      |               |                                 |
+|   └─TableReader_9         | 1.00     | root      |               | data:TableFullScan_8            |
+|     └─TableFullScan_8     | 1.00     | cop[tikv] | table:t1      | keep order:false, stats:pseudo  |
++---------------------------+----------+-----------+---------------+---------------------------------+
+7 rows in set (0.00 sec)
+```
+
+As you can see, the scalar subquery is not expanded during the execution, which makes it easier to understand the specific execution process of such SQL.
+
+> **Note:**
+>
+> [`tidb_opt_enable_non_eval_scalar_subquery`](/system-variables.md#tidb_opt_enable_non_eval_scalar_subquery-new-in-v730) only affects the behavior of the `EXPLAIN` statement, and the `EXPLAIN ANALYZE` statement still pre-executes the subquery in advance.

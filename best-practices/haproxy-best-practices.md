@@ -1,7 +1,7 @@
 ---
 title: Best Practices for Using HAProxy in TiDB
-summary: This document describes best practices for configuration and usage of HAProxy in TiDB.
-aliases: ['/docs/dev/best-practices/haproxy-best-practices/','/docs/dev/reference/best-practices/haproxy/']
+summary: HAProxy is a free, open-source load balancer and proxy server for TCP and HTTP-based applications. It provides high availability, load balancing, health checks, sticky sessions, SSL support, and monitoring. To deploy HAProxy, ensure hardware and software requirements are met, then install and configure it. Use the latest stable version for best results.
+aliases: ['/docs/dev/best-practices/haproxy-best-practices/','/docs/dev/reference/best-practices/haproxy/','/tidb/stable/haproxy-best-practices/','/tidb/dev/haproxy-best-practices/']
 ---
 
 # Best Practices for Using HAProxy in TiDB
@@ -10,20 +10,24 @@ This document describes best practices for configuration and usage of [HAProxy](
 
 ![HAProxy Best Practices in TiDB](/media/haproxy.jpg)
 
+> **Note:**
+>
+> The minimum version of HAProxy that works with all versions of TiDB is v1.5. Between v1.5 and v2.1, you need to set the `post-41` option in `mysql-check`. It is recommended to use HAProxy v2.2 or newer.
+
 ## HAProxy overview
 
 HAProxy is free, open-source software written in C language that provides a high availability load balancer and proxy server for TCP and HTTP-based applications. Because of its fast and efficient use of CPU and memory, HAProxy is now widely used by many well-known websites such as GitHub, Bitbucket, Stack Overflow, Reddit, Tumblr, Twitter, Tuenti, and AWS (Amazon Web Services).
 
-HAProxy is written in the year 2000 by Willy Tarreau, the core contributor to the Linux kernel, who is still responsible for the maintenance of the project and provides free software updates in the open-source community. The latest stable version 2.0.0 was released on August 16, 2019, bringing more [excellent features](https://www.haproxy.com/blog/haproxy-2-0-and-beyond/).
+HAProxy is written in the year 2000 by Willy Tarreau, the core contributor to the Linux kernel, who is still responsible for the maintenance of the project and provides free software updates in the open-source community. In this guide, HAProxy [2.6](https://www.haproxy.com/blog/announcing-haproxy-2-6/) is used. It is recommended to use the latest stable version. See [the released version of HAProxy](http://www.haproxy.org/) for details.
 
 ## Basic features
 
-- [High Availability](http://cbonte.github.io/haproxy-dconv/1.9/intro.html#3.3.4): HAProxy provides high availability with support for a graceful shutdown and a seamless switchover;
-- [Load Balancing](http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#4.2-balance): Two major proxy modes are supported: TCP, also known as layer 4, and HTTP, also known as layer 7. No less than 9 load balancing algorithms are supported, such as roundrobin, leastconn and random;
-- [Health Check](http://cbonte.github.io/haproxy-dconv/1.9/configuration.html#5.2-check): HAProxy periodically checks the status of HTTP or TCP mode of the server;
-- [Sticky Session](http://cbonte.github.io/haproxy-dconv/1.9/intro.html#3.3.6): HAProxy can stick a client to a specific server for the duration when the application does not support sticky sessions;
-- [SSL](http://cbonte.github.io/haproxy-dconv/1.9/intro.html#3.3.2): HTTPS communication and resolution are supported;
-- [Monitoring and Statistics](http://cbonte.github.io/haproxy-dconv/1.9/intro.html#3.3.3): Through the web page, you can monitor the service state and traffic flow in real time.
+- [High Availability](http://cbonte.github.io/haproxy-dconv/2.6/intro.html#3.3.4): HAProxy provides high availability with support for a graceful shutdown and a seamless switchover;
+- [Load Balancing](http://cbonte.github.io/haproxy-dconv/2.6/configuration.html#4.2-balance): Two major proxy modes are supported: TCP, also known as layer 4, and HTTP, also known as layer 7. No less than 9 load balancing algorithms are supported, such as roundrobin, leastconn and random;
+- [Health Check](http://cbonte.github.io/haproxy-dconv/2.6/configuration.html#5.2-check): HAProxy periodically checks the status of HTTP or TCP mode of the server;
+- [Sticky Session](http://cbonte.github.io/haproxy-dconv/2.6/intro.html#3.3.6): HAProxy can stick a client to a specific server for the duration when the application does not support sticky sessions;
+- [SSL](http://cbonte.github.io/haproxy-dconv/2.6/intro.html#3.3.2): HTTPS communication and resolution are supported;
+- [Monitoring and Statistics](http://cbonte.github.io/haproxy-dconv/2.6/intro.html#3.3.3): Through the web page, you can monitor the service state and traffic flow in real time.
 
 ## Before you begin
 
@@ -31,12 +35,12 @@ Before you deploy HAProxy, make sure that you meet the hardware and software req
 
 ### Hardware requirements
 
-For your server, it is recommended to meet the following hardware requirements. You can also improve server specifications according to the load balancing environment.
+According to the [HAProxy documentation](https://www.haproxy.com/documentation/haproxy-enterprise/getting-started/installation/linux/), the minimum hardware configuration for HAProxy is shown in the following table. Under the Sysbench `oltp_read_write` workload, the maximum QPS for this configuration is about 50K. You can upgrade the server configuration according to your load balancing environment.
 
 | Hardware resource      | Minimum specification |
 | :--------------------- | :-------------------- |
 | CPU                    | 2 cores, 3.5 GHz      |
-| Memory                 | 16 GB                 |
+| Memory                 | 4 GB                 |
 | Storage                | 50 GB (SATA)          |
 | Network Interface Card | 10G Network Card      |
 
@@ -46,15 +50,16 @@ You can use the following operating systems and make sure the required dependenc
 
 #### Operating systems
 
-| Operating system version | Architecture                                  |
-|:-------------------------|:----------------------------------------------|
-| Linux 2.4                | x86, x86_64, Alpha, SPARC, MIPS, and PA-RISC  |
-| Linux 2.6 or 3.x         | x86, x86_64, ARM, SPARC, and PPC64            |
-| Solaris 8 or 9           | UltraSPARC II and III                         |
-| Solaris 10               | Opteron and UltraSPARC                        |
-| FreeBSD 4.10 ~ 10        | x86                                           |
-| OpenBSD 3.1 or later versions | i386, AMD64, macppc, Alpha, and SPARC64 |
-| AIX 5.1 ~ 5.3            | Power™                                        |
+| Linux distribution       | Version         |
+| :----------------------- | :----------- |
+| Red Hat Enterprise Linux | 7 or 8   |
+| CentOS                   | 7 or 8   |
+| Oracle Enterprise Linux  | 7 or 8   |
+| Ubuntu LTS               | 18.04 or later versions |
+
+> **Note:**
+>
+> - For more information about other supported operating systems, see [HAProxy documentation](https://github.com/haproxy/haproxy/blob/master/INSTALL).
 
 #### Dependencies
 
@@ -64,43 +69,53 @@ You can use the following operating systems and make sure the required dependenc
 
 To install the dependencies above, run the following command:
 
-{{< copyable "shell-regular" >}}
-
 ```bash
 yum -y install epel-release gcc systemd-devel
 ```
 
 ## Deploy HAProxy
 
-You can easily use HAProxy to configure and set up a load-balanced database environment. This section shows general deployment operations. You can customize the [configuration file](http://cbonte.github.io/haproxy-dconv/1.9/configuration.html) based on your actual scenario.
+You can easily use HAProxy to configure and set up a load-balanced database environment. This section shows general deployment operations. You can customize the [configuration file](http://cbonte.github.io/haproxy-dconv/2.6/configuration.html) based on your actual scenario.
 
 ### Install HAProxy
 
-1. Use yum to install HAProxy：
-
-    {{< copyable "shell-regular" >}}
+1. Download the package of the HAProxy 2.6.21 source code:
 
     ```bash
-    yum -y install haproxy
+    wget https://www.haproxy.org/download/2.6/src/haproxy-2.6.21.tar.gz
     ```
 
-2. Check whether the installation is successful：
+2. Extract the package:
 
-    {{< copyable "shell-regular" >}}
+    ```bash
+    tar zxf haproxy-2.6.21.tar.gz
+    ```
+
+3. Compile the application from the source code:
+
+    ```bash
+    cd haproxy-2.6.21
+    make clean
+    make -j 8 TARGET=linux-glibc USE_THREAD=1
+    make PREFIX=${/app/haproxy} SBINDIR=${/app/haproxy/bin} install  # Replace `${/app/haproxy}` and `${/app/haproxy/bin}` with your custom directories.
+    ```
+
+4. Reconfigure the profile:
+
+    ```bash
+    echo 'export PATH=/app/haproxy/bin:$PATH' >> /etc/profile
+    . /etc/profile
+    ```
+
+5. Check whether the installation is successful:
 
     ```bash
     which haproxy
     ```
 
-    ```
-    /usr/sbin/haproxy
-    ```
-
 #### HAProxy commands
 
 Execute the following command to print a list of keywords and their basic usage:
-
-{{< copyable "shell-regular" >}}
 
 ```bash
 haproxy --help
@@ -135,7 +150,7 @@ haproxy --help
 | `-x <unix_socket>` | Connects to the specified socket and retrieves all the listening sockets from the old process. Then, these sockets are used instead of binding new ones. |
 | `-S <bind>[,<bind_options>...]` | In master-worker mode, creates a master CLI. This CLI enables access to the CLI of every worker. Useful for debugging, it's a convenient way of accessing a leaving process. |
 
-For more details on HAProxy command line options, refer to [Management Guide of HAProxy](http://cbonte.github.io/haproxy-dconv/1.9/management.html) and [General Commands Manual of HAProxy](https://manpages.debian.org/buster-backports/haproxy/haproxy.1.en.html).
+For more details on HAProxy command line options, refer to [Management Guide of HAProxy](http://cbonte.github.io/haproxy-dconv/2.6/management.html) and [General Commands Manual of HAProxy](https://manpages.debian.org/buster-backports/haproxy/haproxy.1.en.html).
 
 ### Configure HAProxy
 
@@ -146,10 +161,10 @@ global                                     # Global configuration.
    log         127.0.0.1 local2            # Global syslog servers (up to two).
    chroot      /var/lib/haproxy            # Changes the current directory and sets superuser privileges for the startup process to improve security.
    pidfile     /var/run/haproxy.pid        # Writes the PIDs of HAProxy processes into this file.
-   maxconn     4000                        # The maximum number of concurrent connections for a single HAProxy process.
+   maxconn     4096                        # The maximum number of concurrent connections for a single HAProxy process. It is equivalent to the command-line argument "-n".
+   nbthread    48                          # The maximum number of threads. (The upper limit is equal to the number of CPUs)
    user        haproxy                     # Same with the UID parameter.
    group       haproxy                     # Same with the GID parameter. A dedicated user group is recommended.
-   nbproc      40                          # The number of processes created when going daemon. When starting multiple processes to forward requests, make sure the value is large enough so that HAProxy does not block processes.
    daemon                                  # Makes the process fork into background. It is equivalent to the command line "-D" argument. It can be disabled by the command line "-db" argument.
    stats socket /var/lib/haproxy/stats     # The directory where statistics output is saved.
 
@@ -181,35 +196,31 @@ listen tidb-cluster                        # Database load balancing.
    server tidb-3 10.9.64.166:4000 check inter 2000 rise 2 fall 3
 ```
 
+To check the source IP address using `SHOW PROCESSLIST`, you need to configure the [PROXY protocol](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) to connect to TiDB.
+
+```yaml
+   server tidb-1 10.9.18.229:4000 send-proxy check inter 2000 rise 2 fall 3       
+   server tidb-2 10.9.39.208:4000 send-proxy check inter 2000 rise 2 fall 3
+   server tidb-3 10.9.64.166:4000 send-proxy check inter 2000 rise 2 fall 3
+```
+
+> **Note:**
+>
+> Before using the PROXY protocol, you need to configure [`proxy-protocol.networks`](/tidb-configuration-file.md#networks) in the configuration file of the TiDB server.
+
 ### Start HAProxy
 
-There are two methods to start HAProxy.
-
-Method 1: Execute `haproxy`. `/etc/haproxy/haproxy.cfg` is read by default (recommended).
-
-{{< copyable "shell-regular" >}}
+To start HAProxy, run `haproxy`. `/etc/haproxy/haproxy.cfg` is read by default (recommended).
 
 ```bash
 haproxy -f /etc/haproxy/haproxy.cfg
 ```
 
-Method 2: Use `systemd` to start HAProxy.
-
-{{< copyable "shell-regular" >}}
-
-```bash
-systemctl start haproxy.service
-```
-
 ### Stop HAProxy
 
-There are two methods to stop HAProxy.
-
-Method 1: Use `kill -9`.
+To stop HAProxy, use the `kill -9` command.
 
 1. Run the following command:
-
-    {{< copyable "shell-regular" >}}
 
     ```bash
     ps -ef | grep haproxy
@@ -217,16 +228,6 @@ Method 1: Use `kill -9`.
 
 2. Terminate the process of HAProxy:
 
-    {{< copyable "shell-regular" >}}
-
     ```bash
     kill -9 ${haproxy.pid}
     ```
-
-Method 2: Use `systemd`.
-
-{{< copyable "shell-regular" >}}
-
-```bash
-systemctl stop haproxy.service
-```

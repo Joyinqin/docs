@@ -1,6 +1,6 @@
 ---
 title: Literal Values
-summary: This article introduces the literal values ​​of TiDB SQL statements.
+summary: This article introduces the literal values of TiDB SQL statements.
 aliases: ['/docs/dev/literal-values/','/docs/dev/reference/sql/language-structure/literal-values/']
 ---
 
@@ -74,7 +74,7 @@ To represent some special characters in a string, you can use escape characters 
 
 If you want to represent `"` in the string surrounded by `'`, or `'` in the string surrounded by `"`, you do not need to use escape characters.
 
-For more information, see [String Literals in MySQL](https://dev.mysql.com/doc/refman/5.7/en/string-literals.html).
+For more information, see [String Literals in MySQL](https://dev.mysql.com/doc/refman/8.0/en/string-literals.html).
 
 ## Numeric literals
 
@@ -86,7 +86,7 @@ Exact-value numeric literals can be represented as `1, .2, 3.4, -5, -6.78, +9.10
 
 Numeric literals can also be represented in scientific notation, such as `1.2E3, 1.2E-3, -1.2E3, -1.2E-3`.
 
-For more information, see [Numeric Literals in MySQL](https://dev.mysql.com/doc/refman/5.7/en/number-literals.html).
+For more information, see [Numeric Literals in MySQL](https://dev.mysql.com/doc/refman/8.0/en/number-literals.html).
 
 ## Date and time literals
 
@@ -94,18 +94,18 @@ Date and time literal values can be represented in several formats, such as quot
 
 TiDB supports the following date formats:
 
-* `'YYYY-MM-DD'` or `'YY-MM-DD'`: The `-` delimiter here is not strict. It can be any punctuation. For example, `'2017-08-24'`, `'2017&08&24'`, `'2012@12^31'` are all valid date formats. The only special punctuation is '.', which is is treated as a decimal point to separate the integer and fractional parts. Date and time can be separated by `T` or a white space. For example, `2017-8-24 10:42:00` and `2017-8-24T10:42:00` represents the same date and time.
+* `'YYYY-MM-DD'` or `'YY-MM-DD'`: The `-` delimiter here is not strict. It can be any punctuation. For example, `'2017-08-24'`, `'2017&08&24'`, `'2012@12^31'` are all valid date formats. The only special punctuation is '.', which is treated as a decimal point to separate the integer and fractional parts. Date and time can be separated by `T` or a white space. For example, `2017-8-24 10:42:00` and `2017-8-24T10:42:00` represents the same date and time.
 * `'YYYYMMDDHHMMSS'` or `'YYMMDDHHMMSS'`: For example, `'20170824104520'` and `'170824104520'` are regarded as `'2017-08-24 10:45:20'`. However, if you provide a value out of range, such as `'170824304520'`, it is not treated as a valid date. Note that incorrect formats such as `YYYYMMDD HHMMSS`, `YYYYMMDD HH:MM:DD`, or `YYYY-MM-DD HHMMSS` will fail to insert.
 * `YYYYMMDDHHMMSS` or `YYMMDDHHMMSS`: Note that these formats have no single or double quotes, but a number. For example, `20170824104520` is interpreted as `'2017-08-24 10:45:20'`.
 
-DATETIME or TIMESTAMP values can be followed by a fractional part, used to represent microseconds precision (6 digits).  The fractional part should always be separated from the rest of the time by a decimal point `.`.
+DATETIME or TIMESTAMP values can be followed by a fractional part, used to represent microseconds precision (6 digits). The fractional part should always be separated from the rest of the time by a decimal point `.`.
 
 The year value containing only two digits is ambiguous. It is recommended to use the four-digit year format. TiDB interprets the two-digit year value according to the following rules:
 
 * If the year value is in the range of `70-99`, it is converted to `1970-1999`.
 * If the year value is in the range of `00-69`, it is converted to `2000-2069`.
 
-For month or day values ​​less than 10, `'2017-8-4'` is the same as `'2017-08-04'`. The same is true for Time. For example, `'2017-08-24 1:2:3'` is the same as `'2017-08-24 01:02:03'`.
+For month or day values less than 10, `'2017-8-4'` is the same as `'2017-08-04'`. The same is true for Time. For example, `'2017-08-24 1:2:3'` is the same as `'2017-08-24 01:02:03'`.
 
 When the date or time value is required, TiDB selects the specified format according to the length of the value:
 
@@ -122,7 +122,7 @@ TiDB supports the following formats for time values:
 
 The decimal point of the Time type is also `.`, with a precision of up to 6 digits after the decimal point.
 
-See [MySQL date and time literals](https://dev.mysql.com/doc/refman/5.7/en/date-and-time-literals.html) for more details.
+See [MySQL date and time literals](https://dev.mysql.com/doc/refman/8.0/en/date-and-time-literals.html) for more details.
 
 ## Boolean Literals
 
@@ -158,7 +158,7 @@ x'12AC'
 0x12AC
 ```
 
-Illegal hexadecimal literals:
+Invalid hexadecimal literals:
 
 ```
 X'1z' (z is not a hexadecimal legal digit)
@@ -213,7 +213,7 @@ B'01'
 0b01
 ```
 
-Illegal bit-value literals:
+Invalid bit-value literals:
 
 ```
 b'2' (2 is not a binary digit; it must be 0 or 1)

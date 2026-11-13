@@ -1,6 +1,6 @@
 ---
 title: Key Visualizer Page
-summary: Learn how to use Key Visualizer to monitor traffic.
+summary: TiDB Dashboard's Key Visualizer page analyzes and troubleshoots traffic hotspots in the TiDB cluster. It visually shows traffic changes over time, and allows users to zoom in on specific time periods or region ranges. The page also provides settings to adjust brightness, select metrics, and refresh the heatmap. It identifies common heatmap types and offers solutions to address hotspot issues.
 aliases: ['/docs/dev/dashboard/dashboard-key-visualizer/','/docs/dev/key-visualizer-monitoring-tool/']
 ---
 
@@ -12,9 +12,9 @@ The Key Visualizer page of TiDB Dashboard is used to analyze the usage of TiDB a
 
 You can use one of the following two methods to access the Key Visualizer page:
 
-* After logging into TiDB Dashboard, click **Key Visualizer** on the left navigation menu:
+* After logging in to TiDB Dashboard, click **Key Visualizer** in the left navigation menu.
 
-![Access Key Visualizer](/media/dashboard/dashboard-keyviz-access.png)
+    ![Access Key Visualizer](/media/dashboard/dashboard-keyviz-access-v650.png)
 
 * Visit <http://127.0.0.1:2379/dashboard/#/keyviz> in your browser. Replace `127.0.0.1:2379` with the actual PD instance address and port.
 
@@ -24,11 +24,11 @@ The following image is a demonstration of the Key Visualizer page:
 
 ![Key Visualizer page](/media/dashboard/dashboard-keyviz-overview.png)
 
-From the interface above, you can see the following objects:
+From the preceding interface, you can see the following objects:
 
 + A large heatmap that shows changes of the overall traffic over time.
 + The detailed information of a certain coordinate point.
-+ Information of tables, indexes, and so on (on the left side of the heatmap).
++ Information of tables, and indexes (on the left side of the heatmap).
 
 ## Basic concepts
 
@@ -38,7 +38,7 @@ This section introduces the basic concepts that relate to Key Visualizer.
 
 In a TiDB cluster, the stored data is distributed among TiKV instances. Logically, TiKV is a huge and orderly key-value map. The whole key-value space is divided into many segments and each segment consists of a series of adjacent keys. Such segment is called a `Region`.
 
-For detailed introduction of Region, refer to [TiDB Internal (I) - Data Storage](https://pingcap.com/blog/2017-07-11-tidbinternal1/#region).
+For detailed introduction of Region, refer to [TiDB Internal (I) - Data Storage](https://www.pingcap.com/blog/tidb-internal-data-storage/).
 
 ### Hotspot
 
@@ -47,7 +47,7 @@ When you use the TiDB database, the hotspot issue is typical, where high traffic
 + Write adjacent data into a table with the `AUTO_INCREMENT` primary key, which causes a hotspot issue on this table.
 + Write adjacent time data into the time index of a table, which causes a hotspot issue on the table index.
 
-For more details about hotspot, refer to [Highly Concurrent Write Best Practices](/best-practices/high-concurrency-best-practices.md#hotspot-causes)
+For more details about hotspot, refer to [Best Practices for High-Concurrency Writes](/best-practices/high-concurrency-best-practices.md#hotspot-causes)
 
 ### Heatmap
 
@@ -94,7 +94,7 @@ When you open Key Visualizer, the heatmap of the entire database over the recent
     ![Selection box](/media/dashboard/dashboard-keyviz-select-zoom.gif)
 
     + Click the **Reset** button to reset the Region range to the entire database.
-    + Click the **time selection box** (at the position of `6 hours` on the interface above) and select the observation time period again.
+    + Click the **time selection box** (at the position of `6 hour` on the preceding interface) and select the observation time period again.
 
     ![Select time](/media/dashboard/dashboard-keyviz-select-time.png)
 
@@ -178,4 +178,4 @@ Regions in the bright areas are the hotspots of read and write traffic, which of
 
 ## Address hotspot issues
 
-TiDB has some built-in features to mitigate the common hotspot issue. Refer to [Highly Concurrent Write Best Practices](/best-practices/high-concurrency-best-practices.md) for details.
+TiDB has some built-in features to mitigate the common hotspot issue. Refer to [Best Practices for High-Concurrency Writes](/best-practices/high-concurrency-best-practices.md) for details.

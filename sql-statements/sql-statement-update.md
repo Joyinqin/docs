@@ -10,29 +10,26 @@ The `UPDATE` statement is used to modify data in a specified table.
 
 ## Synopsis
 
-**UpdateStmt:**
+```ebnf+diagram
+UpdateStmt ::=
+    "UPDATE" UpdateOption
+(   TableRef "SET" Assignment ("," Assignment)* WhereClause? OrderBy? Limit?
+|   TableRefs "SET" Assignment ("," Assignment)* WhereClause?
+)
 
-![UpdateStmt](/media/sqlgram/UpdateStmt.png)
+UpdateOption ::=
+    OptimizerHints? ("LOW_PRIORITY" | "HIGH_PRIORITY" | "DELAYED")? "IGNORE"?
 
-**PriorityOpt:**
+TableRef ::=
+    ( TableFactor | JoinTable )
 
-![PriorityOpt](/media/sqlgram/PriorityOpt.png)
+TableRefs ::=
+    EscapedTableRef ("," EscapedTableRef)*
+```
 
-**TableRef:**
-
-![TableRef](/media/sqlgram/TableRef.png)
-
-**TableRefs:**
-
-![TableRefs](/media/sqlgram/TableRefs.png)
-
-**AssignmentList:**
-
-![AssignmentList](/media/sqlgram/AssignmentList.png)
-
-**WhereClauseOptional:**
-
-![WhereClauseOptional](/media/sqlgram/WhereClauseOptional.png)
+> **Note:**
+>
+> Starting from v6.6.0, TiDB supports [Resource Control](/tidb-resource-control-ru-groups.md). You can use this feature to execute SQL statements with different priorities in different resource groups. By configuring proper quotas and priorities for these resource groups, you can gain better scheduling control for SQL statements with different priorities. When resource control is enabled, statement priority (`LOW_PRIORITY` and `HIGH_PRIORITY`) will no longer take effect. It is recommended that you use [Resource Control](/tidb-resource-control-ru-groups.md) to manage resource usage for different SQL statements.
 
 ## Examples
 
@@ -71,7 +68,17 @@ mysql> SELECT * FROM t1;
 
 ## MySQL compatibility
 
-This statement is understood to be fully compatible with MySQL. Any compatibility differences should be [reported via an issue](https://github.com/pingcap/tidb/issues/new/choose) on GitHub.
+TiDB always uses the original value of a column when evaluating expressions. For example:
+
+```sql
+CREATE TABLE t (a int, b int);
+INSERT INTO t VALUES (1,2);
+UPDATE t SET a = a+1,b=a;
+```
+
+In MySQL, the column `b` is updated to 2 because it is set to the value of `a`, and the value of `a` (which is 1) is updated to `a+1` (which is 2) in the same statement. 
+
+TiDB follows the more standard SQL behavior, and updates `b` to 1.
 
 ## See also
 

@@ -1,16 +1,16 @@
 ---
-title: Operating System Tuning
+title: Tune Operating System Performance
 summary: Learn how to tune the parameters of the operating system.
 aliases: ['/docs/dev/tune-operating-system/']
 ---
 
-# Operating System Tuning
+# Tune Operating System Performance
 
 This document introduces how to tune each subsystem of CentOS 7.
 
 > **Note:**
 >
-> + The default configuration of the CentOS 7 operating system is suitable for most services running under moderate workloads. Adjusting the performance of a particular subsystem might negatively affects other subsystems. Therefore, before tuning the system, back up all the user data and configuration information.
+> + The default configuration of the CentOS 7 operating system is suitable for most services running under moderate workloads. Adjusting the performance of a particular subsystem might negatively affect other subsystems. Therefore, before tuning the system, back up all the user data and configuration information.
 > + Fully test all the changes in the test environment before applying them to the production environment.
 
 ## Performance analysis methods
@@ -67,15 +67,16 @@ To avoid accessing memory across Non-Uniform Memory Access (NUMA) nodes as much 
 
 It is **NOT** recommended to use THP for database applications, because databases often have sparse rather than continuous memory access patterns. If high-level memory fragmentation is serious, a higher latency will occur when THP pages are allocated. If the direct compaction is enabled for THP, the CPU usage will surge. Therefore, it is recommended to disable THP.
 
-```sh
+```shell
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
+grubby --update-kernel="$KERNEL" --args='transparent_hugepage=never'
 ```
 
 ### Memory—virtual memory parameters
 
 - `dirty_ratio` percentage ratio. When the total amount of dirty page caches reach this percentage ratio of the total system memory, the system starts to use the `pdflush` operation to write the dirty page caches to disk. The default value of `dirty_ratio` is 20% and usually does not need adjustment. For high-performance SSDs such as NVMe devices, lowering this value helps improve the efficiency of memory reclamation.
-- `dirty_background_ratio` percentage ratio. When the total amount of dirty page caches reach this percentage ratio of the total system memory, the system starts to write the dirty page caches to the disk in the background. The default value of `dirty_ratio` is 10% and usually does not need adjustment. For high-performance SSDs such as NVMe devices, setting a lower value helps improve the efficiency of memory reclamation.
+- `dirty_background_ratio` percentage ratio. When the total amount of dirty page caches reach this percentage ratio of the total system memory, the system starts to write the dirty page caches to the disk in the background. The default value of `dirty_background_ratio` is 10% and usually does not need adjustment. For high-performance SSDs such as NVMe devices, setting a lower value helps improve the efficiency of memory reclamation.
 
 ### Storage and file system
 
@@ -83,9 +84,9 @@ The core I/O stack link is long, including the file system layer, the block devi
 
 #### I/O scheduler
 
-The I/O scheduler determines when and how long I/O operations run on the storage device. It is also called I/O elevator. For SSD devices, it is recommended to set the I/O scheduling policy to noop.
+The I/O scheduler determines when and how long I/O operations run on the storage device. It is also called I/O elevator. For SSD devices, it is recommended to set the I/O scheduling policy to `noop`.
 
-```sh
+```shell
 echo noop > /sys/block/${SSD_DEV_NAME}/queue/scheduler
 ```
 

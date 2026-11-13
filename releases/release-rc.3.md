@@ -1,18 +1,19 @@
 ---
 title: TiDB RC3 Release Notes
 aliases: ['/docs/dev/releases/release-rc.3/','/docs/dev/releases/rc3/']
+summary: TiDB RC3, released on June 16, 2017, focuses on MySQL compatibility, SQL optimization, stability, and performance. Highlights include refined privilege management, accelerated DDL, optimized load balancing, and open-sourced TiDB Ansible for easy cluster management. Detailed updates for TiDB, Placement Driver (PD), and TiKV include improved SQL query optimization, complete privilege management, support for HTTP API, system variables for query concurrency control, and more efficient data balance. PD supports gRPC, disaster recovery toolkit, and hot Region scheduling. TiKV supports gRPC, SST format snapshot, memory leak detection, and improved data importing speed. Overall, the release enhances performance, stability, and management capabilities.
 ---
 
 # TiDB RC3 Release Notes
 
-On June 20, 2017, TiDB RC4 is released!This release is focused on MySQL compatibility, SQL optimization, stability, and performance.
+On June 16, 2017, TiDB RC3 is released! This release is focused on MySQL compatibility, SQL optimization, stability, and performance.
 
 ## Highlight
 
 - The privilege management is refined to enable users to manage the data access privileges using the same way as in MySQL.
 - DDL is accelerated.
 - The load balancing policy and process are optimized for performance.
-- TiDB Ansible is open sourced. By using TiDB-Ansilbe, you can deploy, upgrade, start and shutdown a TiDB cluster with one click.
+- TiDB Ansible is open sourced. By using TiDB-Ansible, you can deploy, upgrade, start and shutdown a TiDB cluster with one click.
 
 ## Detailed updates
 

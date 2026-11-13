@@ -1,156 +1,309 @@
 ---
-title: External Storages
-summary: Describes the storage URL format used in BR, TiDB Lightning, and Dumpling.
-aliases: ['/docs/dev/br/backup-and-restore-storages/']
+title: Backup Storages
+summary: TiDB supports backup storage to Amazon S3, Google Cloud Storage, Azure Blob Storage, and NFS. You can specify the URI and authentication for different storage services. BR sends credentials to TiKV by default when using S3, GCS, or Azure Blob Storage. You can disable this for cloud environments. The URI format for each storage service is specified, along with authentication methods. Server-side encryption is supported for Amazon S3 and Azure Blob Storage. BR v6.3.0 also supports AWS S3 Object Lock.
+aliases: ['/docs/dev/br/backup-and-restore-storages/','/tidb/dev/backup-storage-S3/','/tidb/dev/backup-storage-azblob/','/tidb/dev/backup-storage-gcs/','/tidb/dev/external-storage/']
 ---
 
-# External Storages
+# Backup Storages
 
-Backup & Restore (BR), TiDB Lighting, and Dumpling support reading and writing data on the local filesystem and on Amazon S3. BR also supports reading and writing data on the Google Cloud Storage (GCS). These are distinguished by the URL scheme in the `--storage` parameter passed into BR, in the `-d` parameter passed into TiDB Lightning, and in the `--output` (`-o`) parameter passed into Dumpling.
+TiDB supports storing backup data to Amazon S3, Google Cloud Storage (GCS), Azure Blob Storage, and NFS. Specifically, you can specify the URI of backup storage in the `--storage` or `-s` parameter of `br` commands. This document introduces the [URI format](#uri-format) and [authentication](#authentication) of different external storage services, and [server-side encryption](#server-side-encryption).
 
-## Schemes
+## Send credentials to TiKV
 
-The following services are supported:
+| CLI parameter                | Description                                                  | Default value |
+|:-----------------------------|:-------------------------------------------------------------|:--------------|
+| `--send-credentials-to-tikv` | Controls whether to send credentials obtained by BR to TiKV. | `true`        |
 
-| Service | Schemes | Example URL |
-|---------|---------|-------------|
-| Local filesystem, distributed on every node | local | `local:///path/to/dest/` |
-| Amazon S3 and compatible services | s3 | `s3://bucket-name/prefix/of/dest/` |
-| Google Cloud Storage (GCS) | gcs, gs | `gcs://bucket-name/prefix/of/dest/` |
-| Write to nowhere (for benchmarking only) | noop | `noop://` |
+By default, BR sends a credential to each TiKV node when using Amazon S3, GCS, or Azure Blob Storage as the storage system. This behavior simplifies the configuration and is controlled by the parameter `--send-credentials-to-tikv`(or `-c` in short).
 
-## URL parameters
-
-Cloud storages such as S3 and GCS sometimes require additional configuration for connection. You can specify parameters for such configuration. For example:
-
-+ Use Dumpling to export data to S3:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    ./dumpling -u root -h 127.0.0.1 -P 3306 -B mydb -F 256MiB \
-        -o 's3://my-bucket/sql-backup?region=us-west-2'
-    ```
-
-+ Use TiDB Lightning to import data from S3:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    ./tidb-lightning --tidb-port=4000 --pd-urls=127.0.0.1:2379 --backend=local --sorted-kv-dir=/tmp/sorted-kvs \
-        -d 's3://my-bucket/sql-backup?region=us-west-2'
-    ```
-
-+ Use TiDB Lightning to import data from S3 (using the path style in the request mode):
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    ./tidb-lightning --tidb-port=4000 --pd-urls=127.0.0.1:2379 --backend=local --sorted-kv-dir=/tmp/sorted-kvs \
-        -d 's3://my-bucket/sql-backup?force-path-style=true&endpoint=http://10.154.10.132:8088'
-    ```
-
-+ Use BR to back up data to GCS:
-
-    {{< copyable "shell-regular" >}}
-
-    ```bash
-    ./br backup full -u 127.0.0.1:2379 \
-        -s 'gcs://bucket-name/prefix'
-    ```
-
-### S3 URL parameters
-
-| URL parameter | Description |
-|----------:|---------|
-| `access-key` | The access key |
-| `secret-access-key` | The secret access key |
-| `region` | Service Region for Amazon S3 (default to `us-east-1`) |
-| `use-accelerate-endpoint` | Whether to use the accelerate endpoint on Amazon S3 (default to `false`) |
-| `endpoint` | URL of custom endpoint for S3-compatible services (for example, `https://s3.example.com/`) |
-| `force-path-style` | Use path style access rather than virtual hosted style access (default to `false`) |
-| `storage-class` | Storage class of the uploaded objects (for example, `STANDARD`, `STANDARD_IA`) |
-| `sse` | Server-side encryption algorithm used to encrypt the upload (empty, `AES256` or `aws:kms`) |
-| `sse-kms-key-id` | If `sse` is set to `aws:kms`, specifies the KMS ID |
-| `acl` | Canned ACL of the uploaded objects (for example, `private`, `authenticated-read`) |
-
-> **Note:**
->
-> It is not recommended to pass in the access key and secret access key directly in the storage URL, because these keys are logged in plain text. The migration tools try to infer these keys from the environment in the following order:
-
-1. `$AWS_ACCESS_KEY_ID` and `$AWS_SECRET_ACCESS_KEY` environment variables
-2. `$AWS_ACCESS_KEY` and `$AWS_SECRET_KEY` environment variables
-3. Shared credentials file on the tool node at the path specified by the `$AWS_SHARED_CREDENTIALS_FILE` environment variable
-4. Shared credentials file on the tool node at `~/.aws/credentials`
-5. Current IAM role of the Amazon EC2 container
-6. Current IAM role of the Amazon ECS task
-
-### GCS URL parameters
-
-| URL parameter | Description |
-|----------:|---------|
-| `credentials-file` | The path to the credentials JSON file on the tool node |
-| `storage-class` | Storage class of the uploaded objects (for example, `STANDARD`, `COLDLINE`) |
-| `predefined-acl` | Predefined ACL of the uploaded objects (for example, `private`, `project-private`) |
-
-When `credentials-file` is not specified, the migration tool will try to infer the credentials from the environment, in the following order:
-
-1. Content of the file on the tool node at the path specified by the `$GOOGLE_APPLICATION_CREDENTIALS` environment variable
-2. Content of the file on the tool node at `~/.config/gcloud/application_default_credentials.json`
-3. When running in GCE or GAE, the credentials fetched from the metadata server.
-
-## Command-line parameters
-
-In addition to the URL parameters, BR and Dumpling also support specifying these configurations using command-line parameters. For example:
-
-{{< copyable "shell-regular" >}}
+Note that this operation is not applicable to cloud environments. If you use IAM Role authorization, each node has its own role and permissions. In this case, you need to configure `--send-credentials-to-tikv=false` (or `-c=0` in short) to disable sending credentials:
 
 ```bash
-./dumpling -u root -h 127.0.0.1 -P 3306 -B mydb -F 256MiB \
-    -o 's3://my-bucket/sql-backup' \
-    --s3.region 'us-west-2'
+tiup br backup full -c=0 -u pd-service:2379 --storage 's3://bucket-name/prefix'
 ```
 
-If you have specified URL parameters and command-line parameters at the same time, the URL parameters are overwritten by the command-line parameters.
-
-### S3 command-line parameters
-
-| Command-line parameter | Description |
-|----------:|------|
-| `--s3.region` | Amazon S3's service region, which defaults to `us-east-1`. |
-| `--s3.endpoint` | The URL of custom endpoint for S3-compatible services. For example, `https://s3.example.com/`. |
-| `--s3.storage-class` | The storage class of the upload object. For example, `STANDARD` and `STANDARD_IA`. |
-| `--s3.sse` | The server-side encryption algorithm used to encrypt the upload. The value options are empty, `AES256` and `aws:kms`. |
-| `--s3.sse-kms-key-id` | If `--s3.sse` is configured as `aws:kms`, this parameter is used to specify the KMS ID. |
-| `--s3.acl` | The canned ACL of the upload object. For example, `private` and `authenticated-read`. |
-| `--s3.provider` | The type of the S3-compatible service. The supported types are `aws`, `alibaba`, `ceph`, `netease` and `other`. |
-
-### GCS command-line parameters
-
-| Command-line parameter | Description |
-|----------:|---------|
-| `--gcs.credentials-file` |  The path of the JSON-formatted credential on the tool node. |
-| `--gcs.storage-class` | The storage type of the upload object, such as `STANDARD` and `COLDLINE`.  |
-| `--gcs.predefined-acl` | The pre-defined ACL of the upload object, such as `private` and `project-private`. |
-
-## BR sending credentials to TiKV
-
-By default, when using S3 and GCS destinations, BR will send the credentials to every TiKV nodes to reduce setup complexity.
-
-However, this is unsuitable on cloud environment, where every node has their own role and permission. In such cases, you need to disable credentials sending with `--send-credentials-to-tikv=false` (or the short form `-c=0`):
-
-{{< copyable "shell-regular" >}}
-
-```bash
-./br backup full -c=0 -u pd-service:2379 -s 's3://bucket-name/prefix'
-```
-
-When using SQL statements to [back up](/sql-statements/sql-statement-backup.md) and [restore](/sql-statements/sql-statement-restore.md) data, you can add the `SEND_CREDENTIALS_TO_TIKV = FALSE` option:
-
-{{< copyable "sql" >}}
+If you back up or restore data using the [`BACKUP`](/sql-statements/sql-statement-backup.md) and [`RESTORE`](/sql-statements/sql-statement-restore.md) statements, you can add the `SEND_CREDENTIALS_TO_TIKV = FALSE` option:
 
 ```sql
 BACKUP DATABASE * TO 's3://bucket-name/prefix' SEND_CREDENTIALS_TO_TIKV = FALSE;
 ```
 
-This option is not supported in TiDB Lightning and Dumpling, because the two applications are currently standalone.
+## URI format
+
+### URI format description
+
+The URI format of the external storage service is as follows:
+
+```shell
+[scheme]://[host]/[path]?[parameters]
+```
+
+For more information about the URI format, see [URI Formats of External Storage Services](/external-storage-uri.md).
+
+### URI examples
+
+This section provides some URI examples by using `external` as the `host` parameter (`bucket name` or `container name` in the preceding sections).
+
+<SimpleTab groupId="storage">
+<div label="Amazon S3" value="amazon">
+
+**Back up snapshot data to Amazon S3**
+
+```shell
+tiup br backup full -u "${PD_IP}:2379" \
+--storage "s3://external/backup-20220915?access-key=${access-key}&secret-access-key=${secret-access-key}"
+```
+
+**Restore snapshot data from Amazon S3**
+
+```shell
+tiup br restore full -u "${PD_IP}:2379" \
+--storage "s3://external/backup-20220915?access-key=${access-key}&secret-access-key=${secret-access-key}"
+```
+
+</div>
+<div label="GCS" value="gcs">
+
+**Back up snapshot data to GCS**
+
+```shell
+tiup br backup full --pd "${PD_IP}:2379" \
+--storage "gcs://external/backup-20220915?credentials-file=${credentials-file-path}"
+```
+
+**Restore snapshot data from GCS**
+
+```shell
+tiup br restore full --pd "${PD_IP}:2379" \
+--storage "gcs://external/backup-20220915?credentials-file=${credentials-file-path}"
+```
+
+</div>
+<div label="Azure Blob Storage" value="azure">
+
+**Back up snapshot data to Azure Blob Storage**
+
+```shell
+tiup br backup full -u "${PD_IP}:2379" \
+--storage "azure://external/backup-20220915?account-name=${account-name}&account-key=${account-key}"
+```
+
+**Restore the `test` database from snapshot backup data in Azure Blob Storage**
+
+```shell
+tiup br restore db --db test -u "${PD_IP}:2379" \
+--storage "azure://external/backup-20220915account-name=${account-name}&account-key=${account-key}"
+```
+
+</div>
+</SimpleTab>
+
+## Authentication
+
+When storing backup data in a cloud storage system, you need to configure authentication parameters depending on the specific cloud service provider. This section describes the authentication methods used by Amazon S3, GCS, and Azure Blob Storage, and how to configure the accounts used to access the corresponding storage service.
+
+<SimpleTab groupId="storage">
+<div label="Amazon S3" value="amazon">
+
+Before backup, configure the following privileges to access the backup directory on S3.
+
+- Minimum privileges for TiKV and Backup & Restore (BR) to access the backup directories during backup: `s3:ListBucket`, `s3:GetObject`, `s3:DeleteObject`, `s3:PutObject`, and `s3:AbortMultipartUpload`
+- Minimum privileges for TiKV and BR to access the backup directories during restore: `s3:ListBucket` and `s3:GetObject`.
+
+If you have not yet created a backup directory, refer to [Create a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) to create an S3 bucket in the specified region. If necessary, you can also create a folder in the bucket by referring to [Create a folder](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-folders.html).
+
+> **Note:**
+>
+> In 2024, AWS changed the default behavior, and newly created instances now only support IMDSv2 by default. For more details, see [Set IMDSv2 as default for all new instance launches in your account](https://aws.amazon.com/about-aws/whats-new/2024/03/set-imdsv2-default-new-instance-launches/). Therefore, starting from v8.4.0, BR supports obtaining IAM role permissions on Amazon EC2 instances with only IMDSv2 enabled. When using BR of an earlier version before v8.4.0, you need to configure the instance to support both IMDSv1 and IMDSv2.
+
+It is recommended that you configure access to S3 using either of the following ways:
+
+- Method 1: Specify the access key
+
+    If you specify an access key and a secret access key in the URI, authentication is performed using the specified access key and secret access key. Besides specifying the key in the URI, the following methods are also supported:
+
+    - BR reads the environment variables `$AWS_ACCESS_KEY_ID` and `$AWS_SECRET_ACCESS_KEY`.
+    - BR reads the environment variables `$AWS_ACCESS_KEY` and `$AWS_SECRET_KEY`.
+    - BR reads the shared credentials file in the path specified by the environment variable `$AWS_SHARED_CREDENTIALS_FILE`.
+    - BR reads the shared credentials file in the `~/.aws/credentials` path.
+
+- Method 2: Access based on the IAM role
+
+    Associate an IAM role that can access S3 with EC2 instances where the TiKV and BR nodes run. After the association, BR can directly access the backup directories in S3 without additional settings.
+
+    ```shell
+    tiup br backup full --pd "${PD_IP}:2379" \
+    --storage "s3://${host}/${path}"
+    ```
+
+</div>
+<div label="GCS" value="gcs">
+
+You can configure the credentials used to access GCS in the following ways:
+
+- Method 1: Explicitly specify `credentials-file`
+
+    - If `credentials-file` points to a Service Account JSON file, BR and TiKV access GCS using this credential.
+    - If TiKV uses the `gcp_v2` external storage backend, `credentials-file` can also point to the `external_account` JSON used by Google Cloud WIF.
+
+- Method 2: Use Application Default Credentials (ADC)
+
+    - BR reads the file in the path specified by the environment variable `$GOOGLE_APPLICATION_CREDENTIALS`.
+    - BR reads the file `~/.config/gcloud/application_default_credentials.json`.
+    - When BR runs in GCE or GAE, it uses the credentials obtained from the metadata server.
+
+If you want TiKV to use GCS WIF or ADC, you need to enable the `gcp_v2` external storage backend. **Starting from v8.5.7, TiKV enables the `gcp_v2` external storage backend by default.** You can configure `gcp_v2` in the following ways:
+
+- Full backup and restore: set `[backup].gcp-v2-enable` to `true` in [TiKV Configuration File Descriptions](/tikv-configuration-file.md)
+- Log backup: set `[log-backup].gcp-v2-enable` to `true` in [TiKV Configuration File Descriptions](/tikv-configuration-file.md)
+
+The default values of the preceding two configuration items are both `true`. If you disable `gcp_v2`, TiKV continues to use the legacy GCS implementation. This implementation supports only Service Account JSON and does not support using WIF directly.
+
+> **Note:**
+>
+> The GCS JSON credentials explicitly passed to `gcp_v2` support only the `service_account` and `external_account` types. If you are using the `authorized_user` JSON generated by ADC and need TiKV to access GCS directly, it is recommended to set `--send-credentials-to-tikv=false` and configure ADC on each TiKV node. Otherwise, BR might send the `authorized_user` JSON to TiKV as an explicit credential, but `gcp_v2` does not accept this type of explicit JSON.
+
+> **Tip:**
+>
+> After `gcp_v2` is enabled, if GCS JSON credentials are not explicitly provided on the TiKV side, TiKV uses the Google Default Credentials flow. Therefore, when using ADC and setting `--send-credentials-to-tikv=false`, make sure that each TiKV node itself has a usable Google credentials environment.
+
+</div>
+<div label="Azure Blob Storage" value="azure">
+
+- Method 1: Specify the shared access signature
+
+    If you specify `account-name` and `sas-token` in the URI, the authentication is performed using the specified account name and shared access signature (SAS) token. Note that the SAS token contains the `&` character. You need to encode it as `%26` before appending it to the URI. You can also directly encode the entire `sas-token` using percent-encoding.
+
+- Method 2: Specify the access key
+
+    If you specify `account-name` and `account-key` in the URI, the authentication is performed using the specified account name and account key. Besides the method of specifying the key in the URI, BR can also read the key from the environment variable `$AZURE_STORAGE_KEY`.
+
+- Method 3: Use Azure AD for backup and restore
+
+    Configure the environment variables `$AZURE_CLIENT_ID`, `$AZURE_TENANT_ID`, and `$AZURE_CLIENT_SECRET` on the node where BR is running.
+
+    - When the cluster is started using TiUP, TiKV uses the systemd service. The following example shows how to configure the preceding three environment variables for TiKV:
+
+        > **Note:**
+        >
+        > If this method is used, you need to restart TiKV in step 3. If your cluster cannot be restarted, use **Method 1: Specify the access key** for backup and restore.
+
+        1. Suppose that the TiKV port on this node is `24000`, that is, the name of the systemd service is `tikv-24000`:
+
+            ```shell
+            systemctl edit tikv-24000
+            ```
+
+        2. Edit the systemd service configuration to set the three environment variables:
+
+            ```
+            [Service]
+            Environment="AZURE_CLIENT_ID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            Environment="AZURE_TENANT_ID=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+            Environment="AZURE_CLIENT_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ```
+
+        3. Reload the configuration and restart TiKV:
+
+            ```shell
+            systemctl daemon-reload
+            systemctl restart tikv-24000
+            ```
+
+    - To configure the Azure AD information for TiKV and BR started with command lines, you only need to check whether the environment variables `$AZURE_CLIENT_ID`, `$AZURE_TENANT_ID`, and `$AZURE_CLIENT_SECRET` are configured in the operating environment by running the following commands:
+
+        ```shell
+        echo $AZURE_CLIENT_ID
+        echo $AZURE_TENANT_ID
+        echo $AZURE_CLIENT_SECRET
+        ```
+
+    - Use BR to back up data to Azure Blob Storage:
+
+        ```shell
+        tiup br backup full -u "${PD_IP}:2379" \
+        --storage "azure://external/backup-20220915?account-name=${account-name}"
+        ```
+
+- Method 4: Use Azure managed identities
+
+    Starting from v8.5.5 and v9.0.0, if your TiDB cluster and BR are running in an Azure Virtual Machine (VM) or Azure Kubernetes Service (AKS) environment and Azure managed identities have been assigned to the nodes, you can use Azure managed identities for authentication.
+
+    Before using this method, ensure that you have granted the permissions (such as `Storage Blob Data Contributor`) to the corresponding managed identity to access the target storage account in the [Azure Portal](https://azure.microsoft.com/).
+
+    - **System-assigned managed identity**:
+
+        When using a system-assigned managed identity, there is no need to configure any Azure-related environment variables. You can run the BR backup command directly.
+
+        ```shell
+        tiup br backup full -u "${PD_IP}:2379" \
+        --storage "azure://external/backup-20220915?account-name=${account-name}"
+        ```
+
+        > **Note:**
+        >
+        > Ensure that the `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_CLIENT_SECRET` environment variables are **not** set in the runtime environment. Otherwise, the Azure SDK might prioritize other authentication methods, preventing the managed identity from taking effect.
+
+    - **User-assigned managed identity**:
+
+        When using a user-assigned managed identity, you need to configure the `AZURE_CLIENT_ID` environment variable in the runtime environment of TiKV and BR, set its value to the client ID of the managed identity, and then run the BR backup command. The detailed steps are as follows:
+
+        1. Configure the client ID for TiKV when starting with TiUP:
+
+            The following steps use the TiKV port `24000` and the systemd service name `tikv-24000` as an example:
+
+            1. Open the systemd service editor by running the following command:
+
+                ```shell
+                systemctl edit tikv-24000
+                ```
+
+            2. Set the `AZURE_CLIENT_ID` environment variable to your managed identity client ID:
+
+                ```ini
+                [Service]
+                Environment="AZURE_CLIENT_ID=<your-client-id>"
+                ```
+
+            3. Reload the systemd configuration and restart TiKV:
+
+                ```shell
+                systemctl daemon-reload
+                systemctl restart tikv-24000
+                ```
+
+        2. Configure the `AZURE_CLIENT_ID` environment variable for BR:
+
+            ```shell
+            export AZURE_CLIENT_ID="<your-client-id>"
+            ```
+
+        3. Back up data to Azure Blob Storage using the following BR command:
+
+            ```shell
+            tiup br backup full -u "${PD_IP}:2379" \
+            --storage "azure://external/backup-20220915?account-name=${account-name}"
+            ```
+
+</div>
+</SimpleTab>
+
+## Server-side encryption
+
+### Amazon S3 server-side encryption
+
+BR supports server-side encryption when backing up data to Amazon S3. You can also use an AWS KMS key you create for S3 server-side encryption using BR. For details, see [BR S3 server-side encryption](/encryption-at-rest.md#br-s3-server-side-encryption).
+
+### Azure Blob Storage server-side encryption
+
+BR supports specifying the Azure server-side encryption scope or providing the encryption key when backing up data to Azure Blob Storage. This feature lets you establish a security boundary for different backup data of the same storage account. For details, see [BR Azure Blob Storage server-side encryption](/encryption-at-rest.md#br-azure-blob-storage-server-side-encryption).
+
+## Other features supported by the storage service
+
+Amazon [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html) can help prevent backup data from accidental or intentional deletion during a specified retention period, enhancing the security and integrity of data. Starting from v6.3.0, BR supports Amazon S3 Object Lock for snapshot backups, adding an additional layer of security for full backups. Starting from v8.0.0, PITR also supports Amazon S3 Object Lock. Whether for full backups or log data backups, the Object Lock feature ensures more reliable data protection, further strengthening the security of data backup and recovery and meeting regulatory requirements.
+
+BR and PITR automatically detect whether the Amazon S3 Object Lock feature is enabled or disabled. You do not need to perform any additional operations.
+
+> **Warning:**
+>
+> If the Object Lock feature is enabled during the snapshot backup or PITR log backup process, the snapshot backup or log backup might fail. You need to restart the snapshot backup or PITR log backup task to continue the backup.

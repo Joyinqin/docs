@@ -1,5 +1,6 @@
 ---
 title: TiCDC Open Protocol
+summary: Learn the concept of TiCDC Open Protocol and how to use it.
 aliases: ['/docs/dev/ticdc/ticdc-open-protocol/','/docs/dev/reference/tools/ticdc/open-protocol/','/docs/dev/ticdc/column-ddl-type-codes/']
 ---
 
@@ -49,7 +50,7 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
 
 + **Key:**
 
-    ```
+    ```json
     {
         "ts":<TS>,
         "scm":<Schema Name>,
@@ -68,7 +69,7 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
 
     `Insert` event. The newly added row data is output.
 
-    ```
+    ```json
     {
         "u":{
             <Column Name>:{
@@ -87,9 +88,9 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
     }
     ```
 
-    `Update` event. The newly added row data ("u") and the row data before the update ("p") are output. The latter ("p") is output only when the old value feature is enabled.
+    `Update` event. The newly added row data ("u") and the row data before the update ("p") are output.
 
-    ```
+    ```json
     {
         "u":{
             <Column Name>:{
@@ -122,9 +123,9 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
     }
     ```
 
-    `Delete` event. The deleted row data is output. When the old value feature is enabled, the `Delete` event includes all the columns of the deleted row data; when this feature is disabled, the `Delete` event only includes the [HandleKey](#bit-flags-of-columns) column.
+    `Delete` event. The deleted row data is output.
 
-    ```
+    ```json
     {
         "d":{
             <Column Name>:{
@@ -155,7 +156,7 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
 
 + **Key:**
 
-    ```
+    ```json
     {
         "ts":<TS>,
         "scm":<Schema Name>,
@@ -168,11 +169,11 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
     | :---------- | :----- | :---------------------------------- |
     | TS          | Number |  The timestamp of the transaction that performs the DDL change.    |
     | Schema Name | String |  The schema name of the DDL change, which might be an empty string.  |
-    | Table Name  | String |  The table name of the DDL change, which might be am empty string. |
+    | Table Name  | String |  The table name of the DDL change, which might be an empty string. |
 
 + **Value:**
 
-    ```
+    ```json
     {
         "q":<DDL Query>,
         "t":<DDL Type>
@@ -188,7 +189,7 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
 
 + **Key:**
 
-    ```
+    ```json
     {
         "ts":<TS>,
         "t":3
@@ -205,7 +206,7 @@ This section introduces the formats of Row Changed Event, DDL Event, and Resolve
 
 This section shows and displays the output logs of the Event stream.
 
-Suppose that you execute the following SQL statement in the upstream and the MQ Partition number is 2:
+Suppose that you execute the following SQL statement in the upstream and the number of MQ partitions is 2:
 
 {{< copyable "sql" >}}
 
@@ -240,10 +241,10 @@ COMMIT;
 + Log 8 is a repeated event of Log 7. Row Changed Event might be repeated, but the first Event of each version is sent orderly.
 
 ```
-5. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":1},\"val\":{\"t\":15,\"v\":\"YWE=\"}}}"]
-6. [partition=1] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":2},\"val\":{\"t\":15,\"v\":\"YmI=\"}}}"]
-7. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":3},\"val\":{\"t\":15,\"v\":\"Y2M=\"}}}"]
-8. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":3},\"val\":{\"t\":15,\"v\":\"Y2M=\"}}}"]
+5. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":1},\"val\":{\"t\":15,\"v\":\"aa\"}}}"]
+6. [partition=1] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":2},\"val\":{\"t\":15,\"v\":\"bb\"}}}"]
+7. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":3},\"val\":{\"t\":15,\"v\":\"cc\"}}}"]
+8. [partition=0] [key="{\"ts\":415508878783938562,\"scm\":\"test\",\"tbl\":\"t1\",\"t\":1}"] [value="{\"u\":{\"id\":{\"t\":3,\"h\":true,\"v\":3},\"val\":{\"t\":15,\"v\":\"cc\"}}}"]
 ```
 
 Execute the following SQL statements in the upstream:
@@ -272,10 +273,10 @@ COMMIT;
 
 ## Protocol parsing for consumers
 
-Currently, TiCDC does not provide the standard parsing library for TiCDC Open Protocol, but the Golang version and Java version of parsing demonstrations are provided. You can refer to the data format provided in this document and the following demonstrations to implement the protocol parsing for consumers.
+Currently, TiCDC does not provide the standard parsing library for TiCDC Open Protocol, but the Golang version and Java version of parsing examples are provided. You can refer to the data format provided in this document and the following examples to implement the protocol parsing for consumers.
 
-- [Golang demo](https://github.com/pingcap/ticdc/tree/master/cmd/kafka-consumer)
-- [Java demo](https://github.com/pingcap/ticdc/tree/master/demo/java)
+- [Golang examples](https://github.com/pingcap/tiflow/tree/master/cmd/kafka-consumer)
+- [Java examples](https://github.com/pingcap/tiflow/tree/master/examples/java)
 
 ## Column type code
 
@@ -307,6 +308,7 @@ Currently, TiCDC does not provide the standard parsing library for TiCDC Open Pr
 | LONGTEXT/LONGBLOB     | 251  | {"t":251,"v":"5rWL6K+VdGV4dA=="} | The value is encoded in Base64. |
 | TEXT/BLOB             | 252  | {"t":252,"v":"5rWL6K+VdGV4dA=="} | The value is encoded in Base64. |
 | CHAR/BINARY           | 254  | {"t":254,"v":"test"} / {"t":254,"v":"\\\\x89PNG\\\\r\\\\n\\\\x1a\\\\n"} | The value is encoded in UTF-8. When the upstream type is BINARY, invisible characters are escaped. |
+| TiDBVectorFloat32              | 225  | {"t":225,"v":"[1.23, -0.4]"} |  |
 | GEOMETRY              | 255  |  | Unsupported |
 
 ## DDL Type Code
@@ -386,4 +388,4 @@ If the value of a column is `46`, the column is a composite index column, a prim
 > **Note:**
 >
 > + `BinaryFlag` is meaningful only when the column type is BLOB/TEXT (including TINYBLOB/TINYTEXT and BINARY/CHAR). When the upstream column is the BLOB type, the `BinaryFlag` value is set to `1`. When the upstream column is the TEXT type, the `BinaryFlag` value is set to `0`.
-> + To replicate a table from the upstream, TiCDC selects a [valid index](/ticdc/ticdc-overview.md#restrictions) as the Handle index. The `HandleKeyFlag` value of the Handle index column is set to `1`.
+> + To replicate a table from the upstream, TiCDC selects a [valid index](/ticdc/ticdc-overview.md#best-practices) as the Handle index. The `HandleKeyFlag` value of the Handle index column is set to `1`.

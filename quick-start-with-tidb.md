@@ -1,117 +1,139 @@
 ---
-title: Quick Start Guide for the TiDB Database Platform
-summary: Learn how to quickly get started with the TiDB platform and see if TiDB is the right choice for you.
+title: Quick Start with TiDB Self-Managed
+summary: Learn how to quickly get started with TiDB Self-Managed using TiUP playground and see if TiDB is the right choice for you.
 aliases: ['/docs/dev/quick-start-with-tidb/','/docs/dev/test-deployment-using-docker/']
 ---
 
-# Quick Start Guide for the TiDB Database Platform
+# Quick Start with TiDB Self-Managed
 
-This guide walks you through the quickest way to get started with TiDB. You will be using TiUP, a package manager in the TiDB ecosystem, to help you run any TiDB cluster component with only a single line of command.
+This guide provides the quickest way to get started with TiDB Self-Managed. For non-production environments, you can deploy your TiDB database using either of the following methods:
+
+- [Deploy a local test cluster](#deploy-a-local-test-cluster) (for macOS and Linux)
+- [Simulate production deployment on a single machine](#simulate-production-deployment-on-a-single-machine) (for Linux only)
+
+In addition, you can try out TiDB features on [TiDB Playground](https://play.tidbcloud.com/?utm_source=docs&utm_medium=tidb_quick_start).
 
 > **Note:**
 >
-> The deployment method provided in this guide is **ONLY FOR** quick start, **NOT FOR** production.
+> The deployment method provided in this guide is **ONLY FOR** quick start, **NOT FOR** production or comprehensive functionality and stability testing.
 >
-> - To deploy an on-premises production cluster, see [production installation guide](/production-deployment-using-tiup.md).
-> - To deploy TiDB in Kubernetes, see [Get Started with TiDB in Kubernetes](https://docs.pingcap.com/tidb-in-kubernetes/stable/get-started).
-> - To manage TiDB in the cloud, see [TiDB Cloud Quick Start](https://docs.pingcap.com/tidbcloud/beta/tidb-cloud-quickstart).
+> - To deploy a self-hosted production cluster, see the [production installation guide](/production-deployment-using-tiup.md).
+> - To deploy TiDB on Kubernetes, see [Get Started with TiDB on Kubernetes](https://docs.pingcap.com/tidb-in-kubernetes/stable/get-started).
+> - To manage TiDB in the cloud, see [TiDB Cloud Quick Start](https://docs.pingcap.com/tidbcloud/tidb-cloud-quickstart).
+
+## Deploy a local test cluster
+
+This section describes how to quickly deploy a local TiDB cluster for testing on a single macOS or Linux server. By deploying such a cluster, you can learn the basic architecture of the TiDB database and the operation of its components, such as TiDB, TiKV, PD, and the monitoring components.
 
 <SimpleTab>
-<div label="Mac">
+<div label="macOS">
 
-## Deploy a local test environment on Mac OS
-
-As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB instances, 3 TiKV instances, 3 PD instances, and optional TiFlash instances. With TiUP Playground, you can quickly build the test cluster by taking the following steps:
+As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB instances, 3 TiKV instances, 3 PD instances, and optional TiFlash instances. With TiUP Playground, you can quickly set up a test cluster by following these steps:
 
 1. Download and install TiUP:
-
-    {{< copyable "shell-regular" >}}
 
     ```shell
     curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh
     ```
 
+    If the following message is displayed, you have successfully installed TiUP:
+
+    ```log
+    Successfully set mirror to https://tiup-mirrors.pingcap.com
+    Detected shell: zsh
+    Shell profile:  /Users/user/.zshrc
+    /Users/user/.zshrc has been modified to add tiup to PATH
+    open a new terminal or source /Users/user/.zshrc to use it
+    Installed path: /Users/user/.tiup/bin/tiup
+    ===============================================
+    Have a try:     tiup playground
+    ===============================================
+    ```
+
+    Note the Shell profile path in the output above. You need to use the path in the next step.
+
+    > **Note:**
+    >
+    > Starting from v5.2.0, TiDB supports running `tiup playground` on the machine that uses the Apple silicon chip.
+
 2. Declare the global environment variable:
 
     > **Note:**
     >
-    > After the installation, TiUP displays the absolute path of the corresponding `profile` file. You need to modify the following `source` command according to the path.
-
-    {{< copyable "shell-regular" >}}
+    > After the installation, TiUP displays the absolute path of the corresponding Shell profile file. You need to modify `${your_shell_profile}` in the following `source` command according to the path. In this case, `${your_shell_profile}` is `/Users/user/.zshrc` from the output of Step 1.
 
     ```shell
-    source .bash_profile
+    source ${your_shell_profile}
     ```
 
 3. Start the cluster in the current session:
 
-    - If you want to start a TiDB cluster of the latest version with 1 TiDB instance, 1 TiKV instance, 1 PD instance, and 1 TiFlash instance, run the following command:
+    > **Note:**
+    >
+    > - For the playground operated in the following way, after the deployment and testing are finished, TiUP will automatically clean up the cluster data. You will get a new cluster after re-running the command.
+    > - If you want to persist data on storage, then add the `--tag` flag when you start the cluster. For details, see [Specify a tag when starting the TiDB cluster to store the data](/tiup/tiup-playground.md#specify-a-tag-when-starting-the-tidb-cluster-to-store-the-data).
+    >
+    >     ```shell
+    >     tiup playground --tag ${tag_name}
+    >     ```
 
-        {{< copyable "shell-regular" >}}
+    - To start a TiDB cluster of the latest version with 1 TiDB instance, 1 TiKV instance, 1 PD instance, and 1 TiFlash instance, run the following command:
 
         ```shell
         tiup playground
         ```
 
-    - If you want to specify the TiDB version and the number of the instances of each component, run a command like this:
+        If this is the first time you run the command, TiUP will download the latest version of TiDB and start the cluster.
 
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        tiup playground v5.2.2 --db 2 --pd 3 --kv 3 --monitor
-        ```
-
-        The command downloads a version cluster to the local machine and starts it, such as v5.2.2. `--monitor` means that the monitoring component is also deployed.
-
-        To view the latest version, run `tiup list tidb`.
-
-        This command returns the access methods of the cluster:
+        The output displays a list of endpoints of the cluster:
 
         ```log
-        CLUSTER START SUCCESSFULLY, Enjoy it ^-^
-        To connect TiDB: mysql --host 127.0.0.1 --port 4000 -u root
-        To connect TiDB: mysql --host 127.0.0.1 --port 4001 -u root
-        To view the dashboard: http://127.0.0.1:2379/dashboard
-        To view the monitor: http://127.0.0.1:9090
+        🎉 TiDB Playground Cluster is started, enjoy!
+
+        Connect TiDB:    mysql --comments --host 127.0.0.1 --port 4000 -u root
+        TiDB Dashboard:  http://127.0.0.1:2379/dashboard
+        Grafana:         http://127.0.0.1:3000
         ```
 
-        > **Note:**
-        >
-        > + Since v5.2.0, TiDB supports running `tiup playground` on the machine that uses the Apple M1 chip.
-        > + For the playground operated in this way, after the test deployment is finished, TiUP will clean up the original cluster data. You will get a new cluster after re-running the command.
-        > + If you want the data to be persisted on storage，run `tiup --tag <your-tag> playground ...`. For details, refer to [TiUP Reference Guide](/tiup/tiup-reference.md#-t---tag).
-
-4. Start a new session to access TiDB:
-
-    + Use the TiUP client to connect to TiDB.
-
-        {{< copyable "shell-regular" >}}
+    - To specify the TiDB version and the number of instances of each component, run a command like this:
 
         ```shell
-        tiup client
+        tiup playground v8.5.0 --db 2 --pd 3 --kv 3
         ```
 
-    + You can also use the MySQL client to connect to TiDB.
+        It is recommended to run this command on a machine with at least 10 GiB of memory and 4 CPU cores. Insufficient resources might cause the system to crash.  
 
-        {{< copyable "shell-regular" >}}
+        To view all available versions, run `tiup list tidb`.
 
-        ```shell
-        mysql --host 127.0.0.1 --port 4000 -u root
-        ```
+4. Start a new session to access the TiDB cluster endpoints:
 
-5. Access the Prometheus dashboard of TiDB at <http://127.0.0.1:9090>.
+    - Connect to the TiDB database:
 
-6. Access the [TiDB Dashboard](/dashboard/dashboard-intro.md) at <http://127.0.0.1:2379/dashboard>. The default username is `root`, with an empty password.
+        - Use the TiUP client to connect to TiDB.
 
-7. (Optional) [Load data to TiFlash](/tiflash/use-tiflash.md) for analysis.
+            ```shell
+            tiup client
+            ```
 
-8. Clean up the cluster after the test deployment:
+        - Alternatively, you can use the MySQL client to connect to TiDB.
 
-    1. Stop the process by pressing `ctrl-c`.
+            ```shell
+            mysql --host 127.0.0.1 --port 4000 -u root
+            ```
 
-    2. Run the following command:
+    - Prometheus: <http://127.0.0.1:9090>.
 
-        {{< copyable "shell-regular" >}}
+    - [TiDB Dashboard](/dashboard/dashboard-intro.md): <http://127.0.0.1:2379/dashboard>. The default username is `root`, and the password is empty.
+
+    - Grafana: <http://127.0.0.1:3000>. Both the default username and password are `admin`.
+
+5. (Optional) [Load data to TiFlash](/tiflash/tiflash-overview.md#use-tiflash) for analysis.
+
+6. Clean up the cluster after testing:
+
+    1. Stop the above TiDB service by pressing <kbd>Control</kbd>+<kbd>C</kbd>.
+
+    2. Run the following command after the service is stopped:
 
         ```shell
         tiup clean --all
@@ -122,104 +144,108 @@ As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB in
 > TiUP Playground listens on `127.0.0.1` by default, and the service is only locally accessible. If you want the service to be externally accessible, specify the listening address using the `--host` parameter to bind the network interface card (NIC) to an externally accessible IP address.
 
 </div>
-
 <div label="Linux">
 
-## Deploy a local test environment on Linux OS
-
-As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB instances, 3 TiKV instances, 3 PD instances, and optional TiFlash instances. With TiUP Playground, you can quickly build the test cluster by taking the following steps:
+As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB instances, 3 TiKV instances, 3 PD instances, and optional TiFlash instances. With TiUP Playground, you can quickly set up a test cluster by following these steps:
 
 1. Download and install TiUP:
-
-    {{< copyable "shell-regular" >}}
 
     ```shell
     curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh
     ```
 
+    If the following message is displayed, you have successfully installed TiUP:
+
+    ```log
+    Successfully set mirror to https://tiup-mirrors.pingcap.com
+    Detected shell: bash
+    Shell profile:  /home/user/.bashrc
+    /home/user/.bashrc has been modified to add tiup to PATH
+    open a new terminal or source /home/user/.bashrc to use it
+    Installed path: /home/user/.tiup/bin/tiup
+    ===============================================
+    Have a try:     tiup playground
+    ===============================================
+    ```
+
+    Note the Shell profile path in the output above. You need to use the path in the next step.
+
 2. Declare the global environment variable:
 
     > **Note:**
     >
-    > After the installation, TiUP displays the absolute path of the corresponding `profile` file. You need to modify the following `source` command according to the path.
-
-    {{< copyable "shell-regular" >}}
+    > After the installation, TiUP displays the absolute path of the corresponding Shell profile file. You need to modify `${your_shell_profile}` in the following `source` command according to the path.
 
     ```shell
-    source .bash_profile
+    source ${your_shell_profile}
     ```
 
 3. Start the cluster in the current session:
 
-    - If you want to start a TiDB cluster of the latest version with 1 TiDB instance, 1 TiKV instance, 1 PD instance, and 1 TiFlash instance, run the following command:
+    > **Note:**
+    >
+    > - For the playground operated in the following way, after the deployment and testing are finished, TiUP will automatically clean up the cluster data. You will get a new cluster after re-running the command.
+    > - If you want to persist data on storage, then add the `--tag` flag when you start the cluster. For details, see [Specify a tag when starting the TiDB cluster to store the data](/tiup/tiup-playground.md#specify-a-tag-when-starting-the-tidb-cluster-to-store-the-data).
+    >
+    >     ```shell
+    >     tiup playground --tag ${tag_name}
+    >     ```
 
-        {{< copyable "shell-regular" >}}
+    - To start a TiDB cluster of the latest version with 1 TiDB instance, 1 TiKV instance, 1 PD instance, and 1 TiFlash instance, run the following command:
 
         ```shell
         tiup playground
         ```
 
-    - If you want to specify the TiDB version and the number of the instances of each component, run a command like this:
+        If this is the first time you run the command, TiUP will download the latest version of TiDB and start the cluster.
 
-        {{< copyable "shell-regular" >}}
-
-        ```shell
-        tiup playground v5.2.2 --db 2 --pd 3 --kv 3 --monitor
-        ```
-
-        The command downloads a version cluster to the local machine and starts it, such as v5.2.2. `--monitor` means that the monitoring component is also deployed.
-
-        To view the latest version, run `tiup list tidb`.
-
-        This command returns the access methods of the cluster:
+        The output displays a list of endpoints of the cluster:
 
         ```log
-        CLUSTER START SUCCESSFULLY, Enjoy it ^-^
-        To connect TiDB: mysql --host 127.0.0.1 --port 4000 -u root -p (no password) --comments
-        To view the dashboard: http://127.0.0.1:2379/dashboard
-        PD client endpoints: [127.0.0.1:2379]
-        To view the Prometheus: http://127.0.0.1:9090
-        To view the Grafana: http://127.0.0.1:3000
+        🎉 TiDB Playground Cluster is started, enjoy!
+
+        Connect TiDB:    mysql --comments --host 127.0.0.1 --port 4000 -u root
+        TiDB Dashboard:  http://127.0.0.1:2379/dashboard
+        Grafana:         http://127.0.0.1:3000
         ```
 
-        > **Note:**
-        >
-        > For the playground operated in this way, after the test deployment is finished, TiUP will clean up the original cluster data. You will get a new cluster after re-running the command.
-        > If you want the data to be persisted on storage，run `tiup --tag <your-tag> playground ...`. For details, refer to [TiUP Reference Guide](/tiup/tiup-reference.md#-t---tag).
-
-4. Start a new session to access TiDB:
-
-    + Use the TiUP client to connect to TiDB.
-
-        {{< copyable "shell-regular" >}}
+    - To specify the TiDB version and the number of instances of each component, run a command like this:
 
         ```shell
-        tiup client
+        tiup playground v8.5.0 --db 2 --pd 3 --kv 3
         ```
 
-    + You can also use the MySQL client to connect to TiDB.
+        To view all available versions, run `tiup list tidb`.
 
-        {{< copyable "shell-regular" >}}
+4. Start a new session to access the TiDB cluster endpoints:
 
-        ```shell
-        mysql --host 127.0.0.1 --port 4000 -u root
-        ```
+    - Connect to the TiDB database:
 
-5. Access the Prometheus dashboard of TiDB at <http://127.0.0.1:9090>.
+        - Use the TiUP client to connect to TiDB.
 
-6. Access the [TiDB Dashboard](/dashboard/dashboard-intro.md) at <http://127.0.0.1:2379/dashboard>. The default username is `root`, with an empty password.
+            ```shell
+            tiup client
+            ```
 
-7. Access the Grafana dashboard of TiDB through <http://127.0.0.1:3000>. Both the default username and password are `admin`.
+        - Alternatively, you can use the MySQL client to connect to TiDB.
 
-8. (Optional) [Load data to TiFlash](/tiflash/use-tiflash.md) for analysis.
+            ```shell
+            mysql --host 127.0.0.1 --port 4000 -u root
+            ```
 
-9. Clean up the cluster after the test deployment:
+    - Prometheus: <http://127.0.0.1:9090>.
 
-    1. Stop the process by pressing `ctrl-c`.
+    - [TiDB Dashboard](/dashboard/dashboard-intro.md): <http://127.0.0.1:2379/dashboard>. The default username is `root`, and the password is empty.
 
-    2. Run the following command:
+    - Grafana: <http://127.0.0.1:3000>. Both the default username and password are `admin`.
 
-        {{< copyable "shell-regular" >}}
+5. (Optional) [Load data to TiFlash](/tiflash/tiflash-overview.md#use-tiflash) for analysis.
+
+6. Clean up the cluster after testing:
+
+    1. Stop the process by pressing <kbd>Control</kbd>+<kbd>C</kbd>.
+
+    2. Run the following command after the service is stopped:
 
         ```shell
         tiup clean --all
@@ -229,42 +255,44 @@ As a distributed system, a basic TiDB test cluster usually consists of 2 TiDB in
 >
 > TiUP Playground listens on `127.0.0.1` by default, and the service is only locally accessible. If you want the service to be externally accessible, specify the listening address using the `--host` parameter to bind the network interface card (NIC) to an externally accessible IP address.
 
-## Set up a test environment on a single machine using TiUP cluster
+</div>
+</SimpleTab>
 
-- Scenario: Experience a smallest TiDB cluster with the complete topology and simulate the production deployment steps on a single Linux server.
-- Time required: 10 minutes
+## Simulate production deployment on a single machine
 
-This section describes how to deploy a TiDB cluster using a YAML file of the smallest topology in TiUP.
+This section describes how to set up the smallest TiDB cluster with a full topology, and simulate production deployment steps on a single Linux server.
+
+The following describes how to deploy a TiDB cluster using a YAML file of the smallest topology in TiUP.
 
 ### Prepare
 
-Prepare a target machine that meets the following requirements:
+Before deploying the TiDB cluster, ensure that the target machine meets the following requirements:
 
-- CentOS 7.3 or a later version is installed
-- The Linux OS has access to the Internet, which is required to download TiDB and related software installation packages
+- CentOS 7.3 or a later version is installed.
+- The Linux OS has access to the internet, which is required to download TiDB and related software installation packages.
 
-The smallest TiDB cluster topology is as follows:
-
-**Note:**
->
-> The IP address of the following instances only serves as an example IP. In your actual deployment, you need to replace the IP with your actual IP.
+The smallest TiDB cluster topology consists of the following instances:
 
 | Instance | Count | IP | Configuration |
 |:-- | :-- | :-- | :-- |
-| TiKV | 3 | 10.0.1.1 <br/> 10.0.1.1 <br/> 10.0.1.1 | Avoid conflict between the port and the directory |
-| TiDB | 1 | 10.0.1.1 | The default port <br/> Global directory configuration |
-| PD | 1 | 10.0.1.1 | The default port <br/> Global directory configuration |
-| TiFlash | 1 | 10.0.1.1 | The default port <br/> Global directory configuration |
-| Monitor | 1 | 10.0.1.1 | The default port <br/> Global directory configuration |
+| TiKV | 3 | 10.0.1.1 | Use incremental port numbers to avoid conflicts |
+| TiDB | 1 | 10.0.1.1 | Use default port and other configurations |
+| PD | 1 | 10.0.1.1 | Use default port and other configurations |
+| TiFlash | 1 | 10.0.1.1 | Use default port and other configurations |
+| Monitor | 1 | 10.0.1.1 | Use default port and other configurations |
 
-Other requirements for the target machine:
+> **Note:**
+>
+> The IP addresses of the instances are given as examples only. In your actual deployment, replace the IP addresses with your actual IP addresses.
 
-- The `root` user and its password is required
-- [Stop the firewall service of the target machine](/check-before-deployment.md#check-and-stop-the-firewall-service-of-target-machines), or open the port needed by the TiDB cluster nodes
-- Currently, TiUP supports deploying TiDB on the x86_64 (AMD64 and ARM) architectures:
+Other requirements for the target machine include:
 
-    - It is recommended to use CentOS 7.3 or later versions on AMD64
-    - It is recommended to use CentOS 7.6 1810 on ARM
+- The `root` user and its password are required.
+- [Stop the firewall service of the target machine](/check-before-deployment.md#check-the-firewall-service-of-target-machines), or open the ports needed by the TiDB cluster nodes.
+- Currently, the TiUP cluster supports deploying TiDB on the x86_64 (AMD64) and ARM architectures:
+
+    - It is recommended to use CentOS 7.3 or later versions on AMD64 architecture.
+    - It is recommended to use CentOS 7.6 (1810) on ARM architecture.
 
 ### Deploy
 
@@ -274,44 +302,44 @@ Other requirements for the target machine:
 
 1. Download and install TiUP:
 
-    {{< copyable "shell-regular" >}}
-
     ```shell
     curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh
     ```
 
-2. Install the cluster component of TiUP:
+2. Declare the global environment variable.
 
-    {{< copyable "shell-regular" >}}
+    > **Note:**
+    >
+    > After the installation, TiUP displays the absolute path of the corresponding Shell profile file. You need to modify `${your_shell_profile}` in the following `source` command according to the path.
+
+    ```shell
+    source ${your_shell_profile}
+    ```
+
+3. Install the cluster component of TiUP:
 
     ```shell
     tiup cluster
     ```
 
-3. If the TiUP cluster is already installed on the machine, update the software version:
-
-    {{< copyable "shell-regular" >}}
+4. If the TiUP cluster is already installed on the machine, update the software version:
 
     ```shell
     tiup update --self && tiup update cluster
     ```
 
-4. Use the `root` user privilege to increase the connection limit of the `sshd` service. This is because TiUP needs to simulate deployment on multiple machines.
+5. Increase the connection limit of the `sshd` service using the root user privilege. This is because TiUP needs to simulate deployment on multiple machines.
 
     1. Modify `/etc/ssh/sshd_config`, and set `MaxSessions` to `20`.
     2. Restart the `sshd` service:
-
-        {{< copyable "shell-regular" >}}
 
         ```shell
         service sshd restart
         ```
 
-5. Create and start the cluster:
+6. Create and start the cluster:
 
-    Edit the configuration file according to the following template, and name it as `topo.yaml`:
-
-    {{< copyable "shell-regular" >}}
+    Create and edit the [topology configuration file](/tiup/tiup-cluster-topology-reference.md) according to the following template, and name it as `topo.yaml`:
 
     ```yaml
     # # Global variables are applied to all deployments and used as the default value of
@@ -329,7 +357,7 @@ Other requirements for the target machine:
 
     server_configs:
      tidb:
-       log.slow-threshold: 300
+       instance.tidb_slow_log_threshold: 300
      tikv:
        readpool.storage.use-unified-pool: false
        readpool.coprocessor.use-unified-pool: true
@@ -378,16 +406,20 @@ Other requirements for the target machine:
     - `replication.enable-placement-rules`: This PD parameter is set to ensure that TiFlash runs normally.
     - `host`: The IP of the target machine.
 
-6. Execute the cluster deployment command:
-
-    {{< copyable "shell-regular" >}}
+7. Execute the cluster deployment command:
 
     ```shell
-    tiup cluster deploy <cluster-name> <tidb-version> ./topo.yaml --user root -p
+    tiup cluster deploy <cluster-name> <version> ./topo.yaml --user root -p
     ```
 
-    - `<cluster-name>`: Set the cluster name
-    - `<tidb-version>`: Set the TiDB cluster version. You can see all the supported TiDB versions by running the `tiup list tidb` command
+    - `<cluster-name>`: sets the cluster name.
+    - `<version>`: sets the TiDB cluster version, such as `v8.5.0`. You can see all the supported TiDB versions by running the `tiup list tidb` command.
+    - `--user`: specifies the user to initialize the environment.
+    - `-p`: specifies the password used to connect to the target machine.
+
+        > **Note:**
+        >
+        > If you use secret keys, you can specify the path of the keys through `-i`. Do not use `-i` and `-p` at the same time.
 
     Enter "y" and the `root` user's password to complete the deployment:
 
@@ -396,39 +428,33 @@ Other requirements for the target machine:
     Input SSH password:
     ```
 
-7. Start the cluster:
-
-    {{< copyable "shell-regular" >}}
+8. Start the cluster:
 
     ```shell
     tiup cluster start <cluster-name>
     ```
 
-8. Access the cluster:
+9. Access the cluster endpoints:
 
     - Install the MySQL client. If it is already installed, skip this step.
-
-        {{< copyable "shell-regular" >}}
 
         ```shell
         yum -y install mysql
         ```
 
-    - Access TiDB. The password is empty:
-
-        {{< copyable "shell-regular" >}}
+    - Connect to the TiDB database using the MySQL client. The password is empty:
 
         ```shell
         mysql -h 10.0.1.1 -P 4000 -u root
         ```
 
-    - Access the Grafana monitoring dashboard at <http://{grafana-ip}:3000>. The default username and password are both `admin`.
+    - Grafana: <http://{grafana-ip}:3000>. The default username and password are both `admin`.
 
-    - Access the [TiDB Dashboard](/dashboard/dashboard-intro.md) at <http://{pd-ip}:2379/dashboard>. The default username is `root`, and the password is empty.
+    - [TiDB Dashboard](/dashboard/dashboard-intro.md): <http://{pd-ip}:2379/dashboard>. The default username is `root`, and the password is empty.
 
-    - To view the currently deployed cluster list:
+10. (Optional) View the cluster list and topology.
 
-        {{< copyable "shell-regular" >}}
+    - To view the cluster list:
 
         ```shell
         tiup cluster list
@@ -436,33 +462,42 @@ Other requirements for the target machine:
 
     - To view the cluster topology and status:
 
-         {{< copyable "shell-regular" >}}
-
         ```shell
         tiup cluster display <cluster-name>
         ```
 
-</div>
+    To learn more about the `tiup cluster` commands, see [TiUP Cluster Commands](/tiup/tiup-component-cluster.md).
 
-</SimpleTab>
+11. Clean up the cluster after testing:
+
+    1. Stop the above TiDB service by pressing <kbd>Control</kbd>+<kbd>C</kbd>.
+
+    2. Run the following command after the service is stopped:
+
+        ```shell
+        tiup clean --all
+        ```
 
 ## What's next
 
-- If you have just deployed a TiDB cluster for the local test environment:
+If you have just deployed a TiDB cluster for the local test environment, here are the next steps:
 
-    - Learn [Basic SQL operations in TiDB](/basic-sql-operations.md)
-    - [Migrate data to TiDB](/migration-overview.md)
+- Learn about basic SQL operations in TiDB by referring to [Basic SQL operations in TiDB](/basic-sql-operations.md).
+- You can also migrate data to TiDB by referring to [Migrate data to TiDB](/migration-overview.md).
+- Learn more about using TiUP to manage TiDB clusters by referring to [TiUP Overview](/tiup/tiup-overview.md).
 
-- If you are ready to deploy a TiDB cluster for the production environment:
+If you are ready to deploy a TiDB cluster for the production environment, here are the next steps:
 
-    - [Deploy TiDB using TiUP](/production-deployment-using-tiup.md)
-    - [Deploy TiDB on Cloud using TiDB Operator](https://docs.pingcap.com/tidb-in-kubernetes/stable)
+- [Deploy TiDB using TiUP](/production-deployment-using-tiup.md)
+- Alternatively, you can deploy TiDB on Cloud using TiDB Operator by referring to the [TiDB on Kubernetes](https://docs.pingcap.com/tidb-in-kubernetes/stable) documentation.
 
-- If you're looking for analytics solution with TiFlash:
+If you are an application developer and want to quickly build an application using TiDB, here are the next steps:
 
-    - [Use TiFlash](/tiflash/use-tiflash.md)
-    - [TiFlash Overview](/tiflash/tiflash-overview.md)
+- [Developer Guide Overview](https://docs.pingcap.com/developer/)
+- [Create a {{{ .starter }}} Instance](/develop/dev-guide-build-cluster-in-cloud.md)
+- [Example Applications](/develop/dev-guide-sample-application-java-jdbc.md)
 
-> **Note:**
->
-> By default, TiDB, TiUP and TiDB Dashboard share usage details with PingCAP to help understand how to improve the product. For details about what is shared and how to disable the sharing, see [Telemetry](/telemetry.md).
+If you are looking for an analytics solution with TiFlash, here are the next steps:
+
+- [TiFlash Overview](/tiflash/tiflash-overview.md)
+- [Use TiFlash](/tiflash/tiflash-overview.md#use-tiflash)

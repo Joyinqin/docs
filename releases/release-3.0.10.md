@@ -1,6 +1,7 @@
 ---
 title: TiDB 3.0.10 Release Notes
 aliases: ['/docs/dev/releases/release-3.0.10/','/docs/dev/releases/3.0.10/']
+summary: TiDB 3.0.10 was released on February 20, 2020. It includes various bug fixes and improvements for TiDB, TiKV, PD, and TiDB Ansible. Some notable fixes include wrong Join results, data visibility issues, and system panic problems. TiDB Ansible also added new monitoring items to the dashboard. The release notes recommend using the latest 3.0.x version due to known issues in this release.
 ---
 
 # TiDB 3.0.10 Release Notes
@@ -43,15 +44,15 @@ TiDB Ansible version: 3.0.10
 - Add the `tidb_session_ statement_lock_keys_count` monitoring item to monitor the number of lock keys for pessimistic transactions [#14634](https://github.com/pingcap/tidb/pull/14634)
 - Fix the issue that characters in JSON such as `&`, `<`, and `>` are incorrectly escaped [#14637](https://github.com/pingcap/tidb/pull/14637)
 - Fix the system panic issue caused by excessive memory usage when the `HashJoin` operation is building a hash table [#14642](https://github.com/pingcap/tidb/pull/14642)
-- Fix the panic issue caused by incorrect processing logic when an SQL binding processes illegal records [#14645](https://github.com/pingcap/tidb/pull/14645)
-- ix a MySQL incompatibility issue by adding Truncated error detection to decimal division calculation [#14673](https://github.com/pingcap/tidb/pull/14673)
+- Fix the panic issue caused by incorrect processing logic when an SQL binding processes invalid records [#14645](https://github.com/pingcap/tidb/pull/14645)
+- Fix a MySQL incompatibility issue by adding Truncated error detection to decimal division calculation [#14673](https://github.com/pingcap/tidb/pull/14673)
 - Fix the issue of successfully granting users privileges on a table that does not exist [#14611](https://github.com/pingcap/tidb/pull/14611)
 
 ## TiKV
 
 + Raftstore
     - Fix the system panic issue #6460 or data loss issue #598 caused by Region merge failure [#6481](https://github.com/tikv/tikv/pull/6481)
-    - Support `yield` to optimize scheduling fairness, and support pre-transfering the leader to improve leader scheduling stability [#6563](https://github.com/tikv/tikv/pull/6563)
+    - Support `yield` to optimize scheduling fairness, and support pre-transferring the leader to improve leader scheduling stability [#6563](https://github.com/tikv/tikv/pull/6563)
 
 ## PD
 

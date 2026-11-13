@@ -1,6 +1,7 @@
 ---
 title: How to Run TPC-C Test on TiDB
 aliases: ['/docs/dev/benchmark/benchmark-tidb-using-tpcc/','/docs/dev/benchmark/how-to-run-tpcc/']
+summary: This document describes how to test TiDB using TPC-C, an online transaction processing benchmark. It specifies the initial state of the database, provides commands for loading data, running the test, and cleaning up test data. The test measures the maximum qualified throughput using tpmC (transactions per minute).
 ---
 
 # How to Run TPC-C Test on TiDB
@@ -23,7 +24,7 @@ Before testing, TPC-C Benchmark specifies the initial state of the database, whi
 * The `DISTRICT` table has W \* 10 records (Each warehouse provides services to 10 districts)
 * The `CUSTOMER` table has W \* 10 \* 3,000 records (Each district has 3,000 customers)
 * The `HISTORY` table has W \* 10 \* 3,000 records (Each customer has one transaction history)
-* The `ORDER` table has W \* 10 \* 3,000 records (Each district has 3,000 orders and the last 900 orders generated are added to the `NEW-ORDER` table. Each order randomly generates 5 ~ 15 ORDER-LINE records.
+* The `ORDER` table has W \* 10 \* 3,000 records (Each district has 3,000 orders and the last 900 orders generated are added to the `NEW-ORDER` table. Each order randomly generates 5 ~ 15 ORDER-LINE records.)
 
 In this document, the testing uses 1,000 warehouses as an example to test TiDB.
 
@@ -39,6 +40,8 @@ tiup install bench
 
 For detailed usage of the TiUP Bench component, see [TiUP Bench](/tiup/tiup-bench.md).
 
+Assume that you have deployed a TiDB cluster with two TiDB servers located at 172.16.5.140 and 172.16.5.141, and both servers are listening on port 4000. You can run a TPC-C test with the following steps.
+
 ## Load data
 
 **Loading data is usually the most time-consuming and problematic stage of the entire TPC-C test.** This section provides the following command to load data.
@@ -48,12 +51,12 @@ Execute the following TiUP command in Shell:
 {{< copyable "shell-regular" >}}
 
 ```shell
-tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 1000 prepare
+tiup bench tpcc -H 172.16.5.140,172.16.5.141 -P 4000 -D tpcc --warehouses 1000 --threads 20 prepare
 ```
 
 Based on different machine configurations, this loading process might take a few hours. If the cluster size is small, you can use a smaller `WAREHOUSE` value for the test.
 
-After the data is loaded, you can execute the `tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 4 check` command to validate the data correctness.
+After the data is loaded, you can execute the `tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 1000 check` command to validate the data correctness.
 
 ## Run the test
 
@@ -62,7 +65,7 @@ Execute the following command to run the test:
 {{< copyable "shell-regular" >}}
 
 ```shell
-tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 1000 run
+tiup bench tpcc -H 172.16.5.140,172.16.5.141 -P 4000 -D tpcc --warehouses 1000 --threads 100 --time 10m run
 ```
 
 During the test, test results are continuously printed on the console:
@@ -86,7 +89,7 @@ After the test is finished, the test summary results are printed:
 [Summary] STOCK_LEVEL - Takes(s): 487.6, Count: 41, TPM: 5.0, Sum(ms): 9318, Avg(ms): 227, 90th(ms): 512, 99th(ms): 1000, 99.9th(ms): 1000
 ```
 
-After the test is finished, you can execute the `tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 4 check` command to validate the data correctness.
+After the test is finished, you can execute the `tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 1000 check` command to validate the data correctness.
 
 ## Clean up test data
 
@@ -95,5 +98,5 @@ Execute the following command to clean up the test data:
 {{< copyable "shell-regular" >}}
 
 ```shell
-tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 4 cleanup
+tiup bench tpcc -H 172.16.5.140 -P 4000 -D tpcc --warehouses 1000 cleanup
 ```

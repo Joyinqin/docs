@@ -1,5 +1,6 @@
 ---
 title: tiup cluster scale-out
+summary: The tiup cluster scale-out command is used to add new nodes to the cluster. It establishes an SSH connection to the new node, creates necessary directories, and updates the configuration. Options include -u for user, -i for identity file, -p for password, --no-labels to skip label check, --skip-create-user to skip user check, and -h for help. The output is the log of scaling out.
 ---
 
 # tiup cluster scale-out
@@ -14,9 +15,9 @@ When PD is scaled out, new PD nodes are added to the cluster by the join operati
 tiup cluster scale-out <cluster-name> <topology.yaml> [flags]
 ```
 
-`<cluster-name>`: the name of the cluster to operate on. If you forget the cluster name, you can check it with the [`cluster list`](/tiup/tiup-component-dm-list.md) command.
+`<cluster-name>`: the name of the cluster to operate on. If you forget the cluster name, you can check it with the [`cluster list`](/tiup/tiup-component-cluster-list.md) command.
 
-`<topology.yaml>`: the prepared [topology file](/tiup/tiup-dm-topology-reference.md). This topology file should only contain the new nodes that are to be added to the current cluster.
+`<topology.yaml>`: the prepared [topology file](/tiup/tiup-cluster-topology-reference.md). This topology file should only contain the new nodes that are to be added to the current cluster.
 
 ## Options
 
@@ -62,4 +63,6 @@ tiup cluster scale-out <cluster-name> <topology.yaml> [flags]
 
 The log of scaling out.
 
-[<< Back to the previous page - TiUP Cluster command list](/tiup/tiup-component-cluster.md#command-list)
+## See also
+
+- [Scale a TiDB Cluster Using TiUP](/scale-tidb-using-tiup.md)

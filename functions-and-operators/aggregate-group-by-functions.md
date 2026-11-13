@@ -12,20 +12,21 @@ This document describes details about the supported aggregate functions in TiDB.
 
 This section describes the supported MySQL `GROUP BY` aggregate functions in TiDB.
 
-| Name                                                                                                        | Description                                       |
-|:--------------------------------------------------------------------------------------------------------------|:--------------------------------------------------|
-| [`COUNT()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_count)                   | Return a count of the number of rows returned     |
-| [`COUNT(DISTINCT)`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_count-distinct)  | Return the count of a number of different values  |
-| [`SUM()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_sum)                       | Return the sum                                    |
-| [`AVG()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_avg)                       | Return the average value of the argument          |
-| [`MAX()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_max)                       | Return the maximum value                          |
-| [`MIN()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_min)                       | Return the minimum value                          |
-| [`GROUP_CONCAT()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_group-concat)     | Return a concatenated string                     |
-| [`VARIANCE()`, `VAR_POP()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_var-pop) | Return the population standard variance|
-| [`STD()`，`STDDEV()`，`STDDEV_POP`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_std) | Return the population standard deviation |
-| [`VAR_SAMP()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_var-samp) | Return the sample variance |
-| [`STDDEV_SAMP()`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_stddev-samp) | Return the sample standard deviation |
-| [`JSON_OBJECTAGG(key, value)`](https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_json-objectagg) | Return the result set as a single JSON object containing key-value pairs |
+| Name                                                                                                           | Description                                       |
+|:---------------------------------------------------------------------------------------------------------------|:--------------------------------------------------|
+| [`COUNT()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_count)                   | Return a count of the number of rows returned     |
+| [`COUNT(DISTINCT)`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_count-distinct)  | Return the count of a number of different values  |
+| [`SUM()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_sum)                       | Return the sum                                    |
+| [`AVG()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_avg)                       | Return the average value of the argument          |
+| [`MAX()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_max)                       | Return the maximum value                          |
+| [`MIN()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_min)                       | Return the minimum value                          |
+| [`GROUP_CONCAT()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat)     | Return a concatenated string                      |
+| [`VARIANCE()`, `VAR_POP()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_var-pop) | Return the population standard variance           |
+| [`STD()`, `STDDEV()`, `STDDEV_POP`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_std) | Return the population standard deviation      |
+| [`VAR_SAMP()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_var-samp)             | Return the sample variance                        |
+| [`STDDEV_SAMP()`](https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_stddev-samp)       | Return the sample standard deviation              |
+| [`JSON_ARRAYAGG()`](/functions-and-operators/json-functions/json-functions-aggregate.md#json_arrayagg)         | Return the result set as a single JSON array      |
+| [`JSON_OBJECTAGG()`](/functions-and-operators/json-functions/json-functions-aggregate.md#json_objectagg)       | Return the result set as a single JSON object containing key-value pairs |
 
 - Unless otherwise stated, group functions ignore `NULL` values.
 - If you use a group function in a statement containing no `GROUP BY` clause, it is equivalent to grouping on all rows.
@@ -40,36 +41,60 @@ In addition, TiDB also provides the following aggregate functions:
 
     The following example shows how to calculate the fiftieth percentile of a `INT` column:
 
-    {{< copyable "sql" >}}
-
     ```sql
-    drop table if exists t;
-    create table t(a int);
-    insert into t values(1), (2), (3);
+    DROP TABLE IF EXISTS t;
+    CREATE TABLE t(a INT);
+    INSERT INTO t VALUES(1), (2), (3);
     ```
 
-    {{< copyable "sql" >}}
-
     ```sql
-    select approx_percentile(a, 50) from t;
+    SELECT APPROX_PERCENTILE(a, 50) FROM t;
     ```
 
     ```sql
     +--------------------------+
-    | approx_percentile(a, 50) |
+    | APPROX_PERCENTILE(a, 50) |
     +--------------------------+
     |                        2 |
     +--------------------------+
     1 row in set (0.00 sec)
     ```
 
++ `APPROX_COUNT_DISTINCT(expr, [expr...])`
+
+    This function is similar to `COUNT(DISTINCT)` in counting the number of distinct values but returns an approximate result. It uses the `BJKST` algorithm, significantly reducing memory consumption when processing large datasets with a power-law distribution. Moreover, for low-cardinality data, this function provides high accuracy while maintaining efficient CPU utilization.
+
+    The following example shows how to use this function:
+
+    ```sql
+    DROP TABLE IF EXISTS t;
+    CREATE TABLE t(a INT, b INT, c INT);
+    INSERT INTO t VALUES(1, 1, 1), (2, 1, 1), (2, 2, 1), (3, 1, 1), (5, 1, 2), (5, 1, 2), (6, 1, 2), (7, 1, 2);
+    ```
+
+    ```sql
+    SELECT APPROX_COUNT_DISTINCT(a, b) FROM t GROUP BY c;
+    ```
+
+    ```
+    +-----------------------------+
+    | approx_count_distinct(a, b) |
+    +-----------------------------+
+    |                           3 |
+    |                           4 |
+    +-----------------------------+
+    2 rows in set (0.00 sec)
+    ```
+
+Except for the `GROUP_CONCAT()`, `APPROX_PERCENTILE()`, and `APPROX_COUNT_DISTINCT` functions, all the preceding functions can serve as [Window functions](/functions-and-operators/window-functions.md).
+
 ## GROUP BY modifiers
 
-TiDB does not currently support `GROUP BY` modifiers such as `WITH ROLLUP`. We plan to add support in the future. See [TiDB #4250](https://github.com/pingcap/tidb/issues/4250).
+Starting from v7.4.0, the `GROUP BY` clause of TiDB supports the `WITH ROLLUP` modifier. For more information, see [GROUP BY modifiers](/functions-and-operators/group-by-modifier.md).
 
 ## SQL mode support
 
-TiDB supports the SQL Mode `ONLY_FULL_GROUP_BY`, and when enabled TiDB will refuse queries with ambiguous non-aggregated columns. For example, this query is illegal with `ONLY_FULL_GROUP_BY` enabled because the non-aggregated column "b" in the `SELECT` list does not appear in the `GROUP BY` statement:
+TiDB supports the SQL Mode `ONLY_FULL_GROUP_BY`, and when enabled TiDB will refuse queries with ambiguous non-aggregated columns. For example, this query is invalid with `ONLY_FULL_GROUP_BY` enabled because the non-aggregated column "b" in the `SELECT` list does not appear in the `GROUP BY` statement:
 
 ```sql
 drop table if exists t;
@@ -149,12 +174,6 @@ from tbl_name
 group by id, val;
 ```
 
-## Unsupported aggregate functions
-
-The following aggregate functions are currently unsupported in TiDB. You can track our progress in [TiDB #7623](https://github.com/pingcap/tidb/issues/7623):
-
-- `JSON_ARRAYAGG`
-
 ## Related system variables
 
-The `group_concat_max_len` variable sets the maximum number of items for the `GROUP_CONCAT()` function.
+The [`group_concat_max_len`](/system-variables.md#group_concat_max_len) variable sets the maximum number of items for the `GROUP_CONCAT()` function.

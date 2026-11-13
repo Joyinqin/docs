@@ -1,17 +1,15 @@
 ---
 title: DROP PLACEMENT POLICY
-summary: The usage of ALTER PLACEMENT POLICY in TiDB.
+summary: The usage of DROP PLACEMENT POLICY in TiDB.
 ---
 
 # DROP PLACEMENT POLICY
 
-> **Warning:**
->
-> Placement Rules in SQL is an experimental feature. The syntax might change before its GA, and there might also be bugs.
->
-> If you understand the risks, you can enable this experiment feature by executing `SET GLOBAL tidb_enable_alter_placement = 1;`.
-
 `DROP PLACEMENT POLICY` is used to drop a previously created placement policy.
+
+> **Note:**
+>
+> This feature is not available on [{{{ .starter }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#starter) and [{{{ .essential }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#essential) instances.
 
 ## Synopsis
 

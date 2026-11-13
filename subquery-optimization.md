@@ -9,22 +9,23 @@ This article mainly introduces subquery related optimizations.
 
 Subqueries usually appear in the following situations:
 
+- `... </=/!=/>/ ALL (SELECT ... FROM ...)`
 - `NOT IN (SELECT ... FROM ...)`
-- `NOT EXISTS (SELECT ... FROM ...)`
 - `IN (SELECT ... FROM ..)`
+- `NOT EXISTS (SELECT ... FROM ...)`
 - `EXISTS (SELECT ... FROM ...)`
 - `... >/>=/</<=/=/!= (SELECT ... FROM ...)`
 
 Sometimes a subquery contains non-subquery columns, such as `select * from t where t.a in (select * from t2 where t.b=t2.b)`. The `t.b` column in the subquery does not belong to the subquery, it is introduced from the outside of the subquery. This kind of subquery is usually called a "correlated subquery", and the externally introduced column is called a "correlated column". For optimizations about correlated subquery, see [Decorrelation of correlated subquery](/correlated-subquery-optimization.md). This article focuses on subqueries that do not involve correlated columns.
 
-By default, subqueries use `semi join` mentioned in [Understanding TiDB Execution Plan](/explain-overview.md) as the execution method. For some special subqueries, TiDB do some logical rewrite to get better performance.
+By default, subqueries use `semi join` mentioned in [Semi join (correlated subquery)](/explain-subqueries.md#semi-join-correlated-subquery) as the execution method. For some special subqueries, TiDB performs some logical rewrites to get better performance.
 
 ## `... < ALL (SELECT ... FROM ...)` or `... > ANY (SELECT ... FROM ...)`
 
 In this case, `ALL` and `ANY` can be replaced by `MAX` and `MIN`. When the table is empty, the result of `MAX(EXPR)` and `MIN(EXPR)` is NULL. It works the same when the result of `EXPR` contains `NULL`. Whether the result of `EXPR` contains `NULL` may affect the final result of the expression, so the complete rewrite is given in the following form:
 
 - `t.id < all (select s.id from s)` is rewritten as `t.id < min(s.id) and if(sum(s.id is null) != 0, null, true)`
-- `t.id < any (select s.id from s)` is rewritten as `t.id < max(s.id) or if(sum(s.id is null) != 0, null, false)`
+- `t.id > any (select s.id from s)` is rewritten as `t.id > max(s.id) or if(sum(s.id is null) != 0, null, false)`
 
 ## `... != ANY (SELECT ... FROM ...)`
 
@@ -58,8 +59,8 @@ explain select * from t1 where t1.a in (select t2.a from t2);
 | ├─HashAgg_21(Build)          | 7992.00 | root      |                        | group by:test.t2.a, funcs:firstrow(test.t2.a)->test.t2.a                   |
 | │ └─IndexReader_28           | 9990.00 | root      |                        | index:IndexFullScan_27                                                     |
 | │   └─IndexFullScan_27       | 9990.00 | cop[tikv] | table:t2, index:idx(a) | keep order:false, stats:pseudo                                             |
-| └─TableReader_11(Probe)      | 1.00    | root      |                        | data:TableRangeScan_10                                                     |
-|   └─TableRangeScan_10        | 1.00    | cop[tikv] | table:t1               | range: decided by [test.t2.a], keep order:false, stats:pseudo              |
+| └─TableReader_11(Probe)      | 7992.00 | root      |                        | data:TableRangeScan_10                                                     |
+|   └─TableRangeScan_10        | 7992.00 | cop[tikv] | table:t1               | range: decided by [test.t2.a], keep order:false, stats:pseudo              |
 +------------------------------+---------+-----------+------------------------+----------------------------------------------------------------------------+
 ```
 
@@ -75,7 +76,7 @@ At present, for a subquery in such scenarios, if the subquery is not a correlate
 create table t1(a int);
 create table t2(a int);
 insert into t2 values(1);
-explain select * from t where exists (select * from t2);
+explain select * from t1 where exists (select * from t2);
 ```
 
 ```sql
@@ -83,6 +84,14 @@ explain select * from t where exists (select * from t2);
 | id                     | estRows  | task      | access object | operator info                  |
 +------------------------+----------+-----------+---------------+--------------------------------+
 | TableReader_12         | 10000.00 | root      |               | data:TableFullScan_11          |
-| └─TableFullScan_11     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo |
+| └─TableFullScan_11     | 10000.00 | cop[tikv] | table:t1      | keep order:false, stats:pseudo |
 +------------------------+----------+-----------+---------------+--------------------------------+
 ```
+
+In the preceding optimization, the optimizer automatically optimizes the statement execution. In addition, you can also add the [`SEMI_JOIN_REWRITE`](/optimizer-hints.md#semi_join_rewrite) hint to further rewrite the statement.
+
+If this hint is not used to rewrite the query, when the hash join is selected in the execution plan, the semi-join query can only use the subquery to build a hash table. In this case, when the result of the subquery is bigger than that of the outer query, the execution speed might be slower than expected.
+
+Similarly, when the index join is selected in the execution plan, the semi-join query can only use the outer query as the driving table. In this case, when the result of the subquery is smaller than that of the outer query, the execution speed might be slower than expected.
+
+When `SEMI_JOIN_REWRITE()` is used to rewrite the query, the optimizer can extend the selection range to select a better execution plan.

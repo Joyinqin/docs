@@ -1,18 +1,18 @@
 ---
 title: DEADLOCKS
-summary: Learn the `DEADLOCKS` information_schema table.
+summary: Learn the `DEADLOCKS` INFORMATION_SCHEMA table.
 ---
 
 # DEADLOCKS
 
 The `DEADLOCKS` table shows the information of the several deadlock errors that have occurred recently on the current TiDB node.
 
-{{< copyable "sql" >}}
-
 ```sql
-USE information_schema;
+USE INFORMATION_SCHEMA;
 DESC deadlocks;
 ```
+
+The output is as follows:
 
 ```sql
 +-------------------------+---------------------+------+------+---------+-------+
@@ -41,10 +41,20 @@ The meaning of each column field in the `DEADLOCKS` table is as follows:
 * `CURRENT_SQL_DIGEST`: The digest of the SQL statement currently being executed in the lock-acquiring transaction.
 * `CURRENT_SQL_DIGEST_TEXT`: The normalized form of the SQL statement that is currently being executed in the lock-acquiring transaction.
 * `KEY`: The blocked key that the transaction tries to lock. The value of this field is displayed in the form of hexadecimal string.
-* `KEY_INFO`: The detailed information of `KEY`. See the [KEY_INFO](#key_info) section.
+* `KEY_INFO`: The detailed information of `KEY`. See the [`KEY_INFO`](#key_info) section.
 * `TRX_HOLDING_LOCK`: The ID of the transaction that currently holds the lock on the key and causes blocking. This ID is also the `start_ts` of the transaction.
 
+<CustomContent platform="tidb">
+
 To adjust the maximum number of deadlock events that can be recorded in the `DEADLOCKS` table, adjust the [`pessimistic-txn.deadlock-history-capacity`](/tidb-configuration-file.md#deadlock-history-capacity) configuration in the TiDB configuration file. By default, the information of the recent 10 deadlock events is recorded in the table.
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+The information of the recent 10 deadlock events is recorded in the `DEADLOCKS` table.
+
+</CustomContent>
 
 > **Warning:**
 >
@@ -61,7 +71,7 @@ The `KEY_INFO` column shows the detailed information of the `KEY` column. The in
 * `"table_name"`: The name of the table to which the key belongs.
 * `"partition_id"`: The ID of the partition where the key is located.
 * `"partition_name"`: The name of the partition where the key is located.
-* `"handle_type"`: The handle type of the row key (that is, the key that stores a row of data). The possible values ​​are as follows:
+* `"handle_type"`: The handle type of the row key (that is, the key that stores a row of data). The possible values are as follows:
     * `"int"`: The handle type is int, which means that the handle is the row ID.
     * `"common"`: The handle type is not int64. This type is shown in the non-int primary key when clustered index is enabled.
     * `"unknown"`: The handle type is currently not supported.
@@ -74,13 +84,25 @@ In the above fields, if the information of a field is not applicable or currentl
 
 > **Note:**
 >
-> If a key comes from a table with partitioning enabled, and the information of the schema to which the key belongs cannot be queried due to some reasons (for example, the table to which the key belongs has been deleted) during the query, the ID of the partition to which the key belongs might be appear in the `table_id` field. This is because TiDB encodes the keys of different partitions in the same way as it encodes the keys of several independent tables. Therefore, when the schema information is missing, TiDB cannot confirm whether the key belongs to an unpartitioned table or to one partition of a table.
+> If a key comes from a table with partitioning enabled, and the information of the schema to which the key belongs cannot be queried due to some reasons (for example, the table to which the key belongs has been deleted) during the query, the ID of the partition to which the key belongs might appear in the `table_id` field. This is because TiDB encodes the keys of different partitions in the same way as it encodes the keys of several independent tables. Therefore, when the schema information is missing, TiDB cannot confirm whether the key belongs to an unpartitioned table or to one partition of a table.
 
 ## Retryable deadlock errors
+
+<CustomContent platform="tidb-cloud">
+
+> **Note:**
+>
+> This section is not applicable to TiDB Cloud.
+
+</CustomContent>
+
+<CustomContent platform="tidb">
 
 > **Note:**
 >
 > The `DEADLOCKS` table does not collect the information of retryable deadlock errors by default. If you want the table to collect the retryable deadlock error information, you can adjust the value of [`pessimistic-txn.deadlock-history-collect-retryable`](/tidb-configuration-file.md#deadlock-history-collect-retryable) in the TiDB configuration file.
+
+</CustomContent>
 
 When transaction A is blocked by a lock already held by transaction B, and transaction B is directly or indirectly blocked by the lock held by the current transaction A, a deadlock error will occur. In this deadlock, there might be two cases:
 
@@ -91,19 +113,15 @@ In case 1, TiDB will report a deadlock error to the client of transaction A and 
 
 In case 2, the statement currently being executed in transaction A will be automatically retried in TiDB. For example, suppose that transaction A executes the following statement:
 
-{{< copyable "sql" >}}
-
 ```sql
-update t set v = v + 1 where id = 1 or id = 2;
+UPDATE t SET v = v + 1 WHERE id = 1 OR id = 2;
 ```
 
 Transaction B executes the following two statements successively.
 
-{{< copyable "sql" >}}
-
 ```sql
-update t set v = 4 where id = 2;
-update t set v = 2 where id = 1;
+UPDATE t SET v = 4 WHERE id = 2;
+UPDATE t SET v = 2 WHERE id = 1;
 ```
 
 Then if transaction A locks the two rows with `id = 1` and `id = 2`, and the two transactions run in the following sequence:
@@ -119,30 +137,28 @@ When a retryable deadlock occurs, the internal automatic retry will not cause a 
 
 ## Example 1
 
-Assume that the table definition and the initial data are as follows:
-
-{{< copyable "sql" >}}
+Assume that the table definition and the initial data is as follows:
 
 ```sql
-create table t (id int primary key, v int);
-insert into t values (1, 10), (2, 20);
+CREATE TABLE t (id int primary key, v int);
+INSERT INTO t VALUES (1, 10), (2, 20);
 ```
 
 Two transactions are executed in the following order:
 
 | Transaction 1                               | Transaction 2                               | Description                 |
 |--------------------------------------|--------------------------------------|----------------------|
-| `update t set v = 11 where id = 1;`  |                                      |                      |
-|                                      | `update t set v = 21 where id = 2;`  |                      |
-| `update t set v = 12 where id = 2;`  |                                      | Transaction 1 gets blocked.          |
-|                                      | `update t set v = 22 where id = 1;`  | Transaction 2 reports a deadlock error.  |
+| `BEGIN;`                             |                                      |                      |
+|                                      | `BEGIN;`                             |                      |
+| `UPDATE t SET v = 11 WHERE id = 1;`  |                                      |                      |
+|                                      | `UPDATE t SET v = 21 WHERE id = 2;`  |                      |
+| `UPDATE t SET v = 12 WHERE id = 2;`  |                                      | Transaction 1 gets blocked.          |
+|                                      | `UPDATE t SET v = 22 WHERE id = 1;`  | Transaction 2 reports a deadlock error.  |
 
 Next, transaction 2 reports a deadlock error. At this time, query the `DEADLOCKS` table:
 
-{{< copyable "sql" >}}
-
 ```sql
-select * from information_schema.deadlocks;
+SELECT * FROM INFORMATION_SCHEMA.DEADLOCKS;
 ```
 
 The expected output is as follows:
@@ -174,7 +190,7 @@ Assume that you query the `DEADLOCKS` table and get the following result:
 +-------------+----------------------------+-----------+--------------------+------------------------------------------------------------------+-----------------------------------------+----------------------------------------+----------------------------------------------------------------------------------------------------+--------------------+
 ```
 
-The `DEADLOCK_ID` column in the above query result shows that the first two rows together represent the information of a deadlock error, and the two transactions that wait for each other form the deadlock. The next three rows together represent the information of another deadlock error, and the three transactions that wait in a cycle form the deadlock.
+The `DEADLOCK_ID` column in the preceding query result shows that the first two rows together represent the information of a deadlock error, and the two transactions that wait for each other form the deadlock. The next three rows together represent the information of another deadlock error, and the three transactions that wait in a cycle form the deadlock.
 
 ## CLUSTER_DEADLOCKS
 
@@ -182,12 +198,12 @@ The `CLUSTER_DEADLOCKS` table returns information about the recent deadlock erro
 
 Note that, because `DEADLOCK_ID` does not guarantee global uniqueness, in the query result of the `CLUSTER_DEADLOCKS` table, you need to use the `INSTANCE` and `DEADLOCK_ID` together to distinguish the information of different deadlock errors in the result set.
 
-{{< copyable "sql" >}}
-
 ```sql
-USE information_schema;
-DESC cluster_deadlocks;
+USE INFORMATION_SCHEMA;
+DESC CLUSTER_DEADLOCKS;
 ```
+
+The output is as follows:
 
 ```sql
 +-------------------------+---------------------+------+------+---------+-------+

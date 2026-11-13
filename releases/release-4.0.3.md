@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.3 Release Notes
+summary: TiDB 4.0.3 was released on July 24, 2020. New features include TiDB Dashboard improvements, TiFlash file encryption, and support for various tools. Improvements were made to TiDB, TiKV, PD, and TiDB Dashboard. Bug fixes were also implemented for TiDB, TiKV, PD, TiDB Dashboard, TiFlash, TiCDC, Backup & Restore, Dumpling, TiDB Lightning, and TiDB Binlog.
 ---
 
 # TiDB 4.0.3 Release Notes
@@ -28,12 +29,12 @@ TiDB version: 4.0.3
 
     + TiCDC
 
-        - Support configuring `kafka-client-id` in MQ sink-uri [#706](https://github.com/pingcap/ticdc/pull/706)
-        - Support updating `changefeed` configuration offline [#699](https://github.com/pingcap/ticdc/pull/699)
-        - Support setting customized `changefeed` name [#727](https://github.com/pingcap/ticdc/pull/727)
-        - Support TLS and MySQL SSL connection [#347](https://github.com/pingcap/ticdc/pull/347)
-        - Support outputting changes in the Avro format [#753](https://github.com/pingcap/ticdc/pull/753)
-        - Support the Apache Pulsar sink [#751](https://github.com/pingcap/ticdc/pull/751)
+        - Support configuring `kafka-client-id` in MQ sink-uri [#706](https://github.com/pingcap/tiflow/pull/706)
+        - Support updating `changefeed` configuration offline [#699](https://github.com/pingcap/tiflow/pull/699)
+        - Support setting customized `changefeed` name [#727](https://github.com/pingcap/tiflow/pull/727)
+        - Support TLS and MySQL SSL connection [#347](https://github.com/pingcap/tiflow/pull/347)
+        - Support outputting changes in the Avro format [#753](https://github.com/pingcap/tiflow/pull/753)
+        - Support the Apache Pulsar sink [#751](https://github.com/pingcap/tiflow/pull/751)
 
     + Dumpling
 
@@ -86,7 +87,7 @@ TiDB version: 4.0.3
 
     + TiCDC
 
-        - Replace table ID with table name in metrics [#695](https://github.com/pingcap/ticdc/pull/695)
+        - Replace table ID with table name in metrics [#695](https://github.com/pingcap/tiflow/pull/695)
 
     + Backup & Restore (BR)
 
@@ -126,7 +127,7 @@ TiDB version: 4.0.3
     - Fix the issue that `getSchedulers` might cause a data race [#2638](https://github.com/pingcap/pd/pull/2638)
     - Fix the issue that deleting the scheduler might cause deadlocks [#2637](https://github.com/pingcap/pd/pull/2637)
     - Fix the bug that placement rules are not considered when `balance-leader-scheduler` is enabled [#2636](https://github.com/pingcap/pd/pull/2636)
-    - Fix the issue that sometimes service `safepoint` cannot be set properly, which might make BR and dumpling fail [#2635](https://github.com/pingcap/pd/pull/2635)
+    - Fix the issue that sometimes service `safepoint` cannot be set properly, which might make BR and Dumpling fail [#2635](https://github.com/pingcap/pd/pull/2635)
     - Fix the issue that the target store in `hot region scheduler` is incorrectly selected [#2627](https://github.com/pingcap/pd/pull/2627)
     - Fix the issue that the TSO request might take too long when PD leader is switched [#2622](https://github.com/pingcap/pd/pull/2622)
     - Fix the issue of stale scheduler after leader change [#2608](https://github.com/pingcap/pd/pull/2608)
@@ -151,9 +152,9 @@ TiDB version: 4.0.3
 
     + TiCDC
 
-        - Fix the issue that TiCDC leaks memory in some cases [#704](https://github.com/pingcap/ticdc/pull/704)
-        - Fix the issue that unquoted table name causes the SQL syntax error [#676](https://github.com/pingcap/ticdc/pull/676)
-        - Fix the issue that the processor does not fully exit after `p.stop` is called [#693](https://github.com/pingcap/ticdc/pull/693)
+        - Fix the issue that TiCDC leaks memory in some cases [#704](https://github.com/pingcap/tiflow/pull/704)
+        - Fix the issue that unquoted table name causes the SQL syntax error [#676](https://github.com/pingcap/tiflow/pull/676)
+        - Fix the issue that the processor does not fully exit after `p.stop` is called [#693](https://github.com/pingcap/tiflow/pull/693)
 
     + Backup & Restore (BR)
 

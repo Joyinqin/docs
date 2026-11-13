@@ -14,49 +14,92 @@ This statement provides a static list of collations, and is included to provide 
 
 ## Synopsis
 
-**ShowCollationStmt:**
+```ebnf+diagram
+ShowCollationStmt ::=
+    "SHOW" "COLLATION" ShowLikeOrWhere?
 
-![ShowCollationStmt](/media/sqlgram/ShowCollationStmt.png)
+ShowLikeOrWhere ::=
+    "LIKE" SimpleExpr
+|   "WHERE" Expression
+```
 
 ## Examples
 
-When new collation framework is disabled, only binary collations are displayed.
+When the [new collation framework](https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#new_collations_enabled_on_first_bootstrap) is enabled, in addition to the binary collations, TiDB also supports the following collations:
+
+- Seven case- and accent-insensitive collations, ending with `_ci`
+- `utf8mb4_0900_bin`
 
 ```sql
-mysql> SHOW COLLATION;
-+-------------+---------+------+---------+----------+---------+
-| Collation   | Charset | Id   | Default | Compiled | Sortlen |
-+-------------+---------+------+---------+----------+---------+
-| utf8mb4_bin | utf8mb4 |   46 | Yes     | Yes      |       1 |
-| latin1_bin  | latin1  |   47 | Yes     | Yes      |       1 |
-| binary      | binary  |   63 | Yes     | Yes      |       1 |
-| ascii_bin   | ascii   |   65 | Yes     | Yes      |       1 |
-| utf8_bin    | utf8    |   83 | Yes     | Yes      |       1 |
-+-------------+---------+------+---------+----------+---------+
-5 rows in set (0.02 sec)
+SHOW COLLATION;
 ```
 
-When new collation framework is enabled, `utf8_general_ci` and `utf8mb4_general_ci` are additionally supported.
+```
++--------------------+---------+-----+---------+----------+---------+---------------+
+| Collation          | Charset | Id  | Default | Compiled | Sortlen | Pad_attribute |
++--------------------+---------+-----+---------+----------+---------+---------------+
+| ascii_bin          | ascii   |  65 | Yes     | Yes      |       1 | PAD SPACE     |
+| binary             | binary  |  63 | Yes     | Yes      |       1 | NO PAD        |
+| gb18030_bin        | gb18030 | 249 |         | Yes      |       1 | PAD SPACE     |
+| gb18030_chinese_ci | gb18030 | 248 | Yes     | Yes      |       1 | PAD SPACE     |
+| gbk_bin            | gbk     |  87 |         | Yes      |       1 | PAD SPACE     |
+| gbk_chinese_ci     | gbk     |  28 | Yes     | Yes      |       1 | PAD SPACE     |
+| latin1_bin         | latin1  |  47 | Yes     | Yes      |       1 | PAD SPACE     |
+| utf8_bin           | utf8    |  83 | Yes     | Yes      |       1 | PAD SPACE     |
+| utf8_general_ci    | utf8    |  33 |         | Yes      |       1 | PAD SPACE     |
+| utf8_unicode_ci    | utf8    | 192 |         | Yes      |       8 | PAD SPACE     |
+| utf8mb4_0900_ai_ci | utf8mb4 | 255 |         | Yes      |       0 | NO PAD        |
+| utf8mb4_0900_bin   | utf8mb4 | 309 |         | Yes      |       1 | NO PAD        |
+| utf8mb4_bin        | utf8mb4 |  46 | Yes     | Yes      |       1 | PAD SPACE     |
+| utf8mb4_general_ci | utf8mb4 |  45 |         | Yes      |       1 | PAD SPACE     |
+| utf8mb4_unicode_ci | utf8mb4 | 224 |         | Yes      |       8 | PAD SPACE     |
++--------------------+---------+-----+---------+----------+---------+---------------+
+15 rows in set (0.000 sec)
+```
+
+If [the new collation framework](https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#new_collations_enabled_on_first_bootstrap) is disabled, TiDB supports only binary collations.
 
 ```sql
-mysql> SHOW COLLATION;
-+--------------------+---------+------+---------+----------+---------+
-| Collation          | Charset | Id   | Default | Compiled | Sortlen |
-+--------------------+---------+------+---------+----------+---------+
-| utf8mb4_bin        | utf8mb4 |   46 | Yes     | Yes      |       1 |
-| latin1_bin         | latin1  |   47 | Yes     | Yes      |       1 |
-| binary             | binary  |   63 | Yes     | Yes      |       1 |
-| ascii_bin          | ascii   |   65 | Yes     | Yes      |       1 |
-| utf8_bin           | utf8    |   83 | Yes     | Yes      |       1 |
-| utf8_general_ci    | utf8    |   33 |         | Yes      |       1 |
-| utf8mb4_general_ci | utf8    |   45 |         | Yes      |       1 |
-+--------------------+---------+------+---------+----------+---------+
-7 rows in set (0.02 sec)
+SHOW COLLATION;
+```
+
+```
++-------------+---------+-----+---------+----------+---------+---------------+
+| Collation   | Charset | Id  | Default | Compiled | Sortlen | Pad_attribute |
++-------------+---------+-----+---------+----------+---------+---------------+
+| utf8mb4_bin | utf8mb4 |  46 | Yes     | Yes      |       1 | PAD SPACE     |
+| latin1_bin  | latin1  |  47 | Yes     | Yes      |       1 | PAD SPACE     |
+| binary      | binary  |  63 | Yes     | Yes      |       1 | NO PAD        |
+| ascii_bin   | ascii   |  65 | Yes     | Yes      |       1 | PAD SPACE     |
+| utf8_bin    | utf8    |  83 | Yes     | Yes      |       1 | PAD SPACE     |
+| gbk_bin     | gbk     |  87 | Yes     | Yes      |       1 | PAD SPACE     |
+| gb18030_bin | gb18030 | 249 | Yes     | Yes      |       1 | PAD SPACE     |
++-------------+---------+-----+---------+----------+---------+---------------+
+7 rows in set (0.00 sec)
+```
+
+To filter on the character set, you can add a `WHERE` clause.
+
+```sql
+SHOW COLLATION WHERE Charset="utf8mb4";
+```
+
+```sql
++--------------------+---------+-----+---------+----------+---------+---------------+
+| Collation          | Charset | Id  | Default | Compiled | Sortlen | Pad_attribute |
++--------------------+---------+-----+---------+----------+---------+---------------+
+| utf8mb4_0900_ai_ci | utf8mb4 | 255 |         | Yes      |       0 | NO PAD        |
+| utf8mb4_0900_bin   | utf8mb4 | 309 |         | Yes      |       1 | NO PAD        |
+| utf8mb4_bin        | utf8mb4 |  46 | Yes     | Yes      |       1 | PAD SPACE     |
+| utf8mb4_general_ci | utf8mb4 |  45 |         | Yes      |       1 | PAD SPACE     |
+| utf8mb4_unicode_ci | utf8mb4 | 224 |         | Yes      |       8 | PAD SPACE     |
++--------------------+---------+-----+---------+----------+---------+---------------+
+5 rows in set (0.001 sec)
 ```
 
 ## MySQL compatibility
 
-The usage of this statement is understood to be fully compatible with MySQL. However, charsets in TiDB may have different default collations compared with MySQL. For details, refer to [Compatibility with MySQL](/mysql-compatibility.md). Any other compatibility differences should be [reported via an issue](https://github.com/pingcap/tidb/issues/new/choose) on GitHub.
+The usage of the `SHOW COLLATION` statement in TiDB is fully compatible with MySQL. However, charsets in TiDB might have different default collations compared with MySQL. For details, refer to [Compatibility with MySQL](/mysql-compatibility.md). If you find any compatibility differences, [report a bug](https://docs.pingcap.com/tidb/stable/support).
 
 ## See also
 

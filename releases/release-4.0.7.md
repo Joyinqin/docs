@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.7 Release Notes
+summary: TiDB 4.0.7 was released on September 29, 2020. New features include the addition of the `GetAllMembers` function in the PD client and support for generating the metrics relationship graph in TiDB Dashboard. Improvements were made to TiDB, TiKV, PD, TiFlash, and various tools. Bug fixes were also implemented for TiDB, TiKV, PD, TiFlash, and tools like Backup & Restore and Dumpling.
 ---
 
 # TiDB 4.0.7 Release Notes
@@ -46,7 +47,7 @@ TiDB version: 4.0.7
 
     + TiCDC
 
-        - Support translating more execution-efficient SQL statements in MySQL sink when the old value feature is enabled [#955](https://github.com/pingcap/ticdc/pull/955)
+        - Support translating more execution-efficient SQL statements in MySQL sink when the old value feature is enabled [#955](https://github.com/pingcap/tiflow/pull/955)
 
     + Backup & Restore (BR)
 

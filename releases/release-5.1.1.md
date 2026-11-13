@@ -1,5 +1,6 @@
 ---
 title: TiDB 5.1.1 Release Notes
+summary: TiDB 5.1.1 was released on July 30, 2021. The release includes compatibility changes, feature enhancements, improvements, bug fixes, and updates to TiDB Dashboard, TiFlash, TiKV, and various tools. Notable changes include default value changes for variables, support for OIDC SSO in TiDB Dashboard, and bug fixes for data loss and panic issues.
 ---
 
 # TiDB 5.1.1 Release Notes
@@ -64,8 +65,8 @@ TiDB version: 5.1.1
 
     + TiCDC
 
-        - Remove `file sorter` [#2327](https://github.com/pingcap/ticdc/pull/2327)
-        - Improve the error message returned when a PD endpoint misses the certificate [#1973](https://github.com/pingcap/ticdc/issues/1973)
+        - Remove `file sorter` [#2327](https://github.com/pingcap/tiflow/pull/2327)
+        - Improve the error message returned when a PD endpoint misses the certificate [#1973](https://github.com/pingcap/tiflow/issues/1973)
 
     + TiDB Lightning
 
@@ -107,7 +108,7 @@ TiDB version: 5.1.1
 
     - Fix the issue that the duration calculation might panic on certain platforms [#10569](https://github.com/tikv/tikv/pull/10569)
     - Fix the issue that Load Base Split mistakenly uses the unencoded keys of `batch_get_command` [#10542](https://github.com/tikv/tikv/issues/10542)
-    - Fix the issue that changing the `resolved-ts.advance-ts-interval` configuration online cannot take effect immediately [#10426](https://github.com/tikv/tikv/issues/10426)
+    - Fix the issue that changing the `resolved-ts.advance-ts-interval` configuration dynamically cannot take effect immediately [#10426](https://github.com/tikv/tikv/issues/10426)
     - Fix the issue of follower metadata corruption in rare cases with more than 4 replicas [#10225](https://github.com/tikv/tikv/issues/10225)
     - Fix the panic issue that occurs when building a snapshot twice if encryption is enabled [#9786](https://github.com/tikv/tikv/issues/9786) [#10407](https://github.com/tikv/tikv/issues/10407)
     - Fix the wrong `tikv_raftstore_hibernated_peer_state` metric [#10330](https://github.com/tikv/tikv/issues/10330)
@@ -138,12 +139,12 @@ TiDB version: 5.1.1
 
     + TiCDC
 
-        - Fix the support for the new collation feature [#2301](https://github.com/pingcap/ticdc/issues/2301)
-        - Fix the issue that an unsynchronized access to a shared map at runtime might cause panic [#2300](https://github.com/pingcap/ticdc/pull/2300)
-        - Fix the potential DDL loss issue that occurs when the owner crashes while executing the DDL statement [#2290](https://github.com/pingcap/ticdc/pull/2290)
-        - Fix the issue of trying to resolve locks in TiDB prematurely [#2188](https://github.com/pingcap/ticdc/issues/2188)
-        - Fix a bug that might cause data loss if a TiCDC node is killed immediately after a table migration [#2033](https://github.com/pingcap/ticdc/pull/2033)
-        - Fix the handling logic of `changefeed update` on `--sort-dir` and `--start-ts` [#1921](https://github.com/pingcap/ticdc/pull/1921)
+        - Fix the support for the new collation feature [#2301](https://github.com/pingcap/tiflow/issues/2301)
+        - Fix the issue that an unsynchronized access to a shared map at runtime might cause panic [#2300](https://github.com/pingcap/tiflow/pull/2300)
+        - Fix the potential DDL loss issue that occurs when the owner crashes while executing the DDL statement [#2290](https://github.com/pingcap/tiflow/pull/2290)
+        - Fix the issue of trying to resolve locks in TiDB prematurely [#2188](https://github.com/pingcap/tiflow/issues/2188)
+        - Fix a bug that might cause data loss if a TiCDC node is killed immediately after a table migration [#2033](https://github.com/pingcap/tiflow/pull/2033)
+        - Fix the handling logic of `changefeed update` on `--sort-dir` and `--start-ts` [#1921](https://github.com/pingcap/tiflow/pull/1921)
 
     + Backup & Restore (BR)
 

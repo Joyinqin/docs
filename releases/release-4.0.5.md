@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.5 Release Notes
+summary: TiDB 4.0.5 was released on August 31, 2020. The new version includes compatibility changes, new features, improvements, bug fixes, and updates to TiKV, TiFlash, Tools, PD, and TiDB Lightning. Some notable changes include support for the unified log format with TiDB, optimization of performance, bug fixes for various issues, and support for encryption at rest for data storage in TiFlash.
 ---
 
 # TiDB 4.0.5 Release Notes
@@ -29,10 +30,10 @@ TiDB version: 4.0.5
 
     + TiCDC
 
-        - Support Kafka SSL connection [#764](https://github.com/pingcap/ticdc/pull/764)
-        - Support outputting the old value [#708](https://github.com/pingcap/ticdc/pull/708)
-        - Add the column flags [#796](https://github.com/pingcap/ticdc/pull/796)
-        - Support outputting the DDL statements and table schema of the previous version [#799](https://github.com/pingcap/ticdc/pull/799)
+        - Support Kafka SSL connection [#764](https://github.com/pingcap/tiflow/pull/764)
+        - Support outputting the old value [#708](https://github.com/pingcap/tiflow/pull/708)
+        - Add the column flags [#796](https://github.com/pingcap/tiflow/pull/796)
+        - Support outputting the DDL statements and table schema of the previous version [#799](https://github.com/pingcap/tiflow/pull/799)
 
 ## Improvements
 
@@ -84,7 +85,7 @@ TiDB version: 4.0.5
 
     + TiCDC
 
-        - Lower the frequency of getting TSO [#801](https://github.com/pingcap/ticdc/pull/801)
+        - Lower the frequency of getting TSO [#801](https://github.com/pingcap/tiflow/pull/801)
 
     + Backup & Restore (BR)
 
@@ -150,7 +151,7 @@ TiDB version: 4.0.5
 + TiFlash
 
     - Fix the issue that TiFlash cannot start normally after upgrading from an earlier version if the name of the database or table contains special characters
-    - Fix the issue that the TiFlash process can not exit if any exceptions are thrown during initialization
+    - Fix the issue that the TiFlash process cannot exit if any exceptions are thrown during initialization
 
 + Tools
 
@@ -165,11 +166,11 @@ TiDB version: 4.0.5
 
     + TiCDC
 
-        - Fix the issue that the failed `changefeed` cannot be removed [#782](https://github.com/pingcap/ticdc/pull/782)
-        - Fix invalid `delete` events by selecting one unique index as the handle index [#787](https://github.com/pingcap/ticdc/pull/787)
-        - Fix the bug that GC safepoint is forwarded beyond the checkpoint of stopped `changefeed` [#797](https://github.com/pingcap/ticdc/pull/797)
-        - Fix the bug that the network I/O waiting blocks tasks to exit [#825](https://github.com/pingcap/ticdc/pull/825)
-        - Fix the bug that some unnecessary data might be mistakenly replicated to the downstream [#743](https://github.com/pingcap/ticdc/issues/743)
+        - Fix the issue that the failed `changefeed` cannot be removed [#782](https://github.com/pingcap/tiflow/pull/782)
+        - Fix invalid `delete` events by selecting one unique index as the handle index [#787](https://github.com/pingcap/tiflow/pull/787)
+        - Fix the bug that GC safepoint is forwarded beyond the checkpoint of stopped `changefeed` [#797](https://github.com/pingcap/tiflow/pull/797)
+        - Fix the bug that the network I/O waiting blocks tasks to exit [#825](https://github.com/pingcap/tiflow/pull/825)
+        - Fix the bug that some unnecessary data might be mistakenly replicated to the downstream [#743](https://github.com/pingcap/tiflow/issues/743)
 
     + TiDB Lightning
 

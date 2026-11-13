@@ -6,14 +6,7 @@ aliases: ['/docs/dev/maintain-tidb-using-tiup/','/docs/dev/how-to/maintain/tiup-
 
 # TiUP Common Operations
 
-This document describes the following common operations when you operate and maintain a TiDB cluster using TiUP.
-
-- View the cluster list
-- Start the cluster
-- View the cluster status
-- Modify the configuration
-- Stop the cluster
-- Destroy the cluster
+This document describes the common operations when you operate and maintain a TiDB cluster using TiUP.
 
 ## View the cluster list
 
@@ -29,9 +22,9 @@ tiup cluster list
 
 ## Start the cluster
 
-The components in the TiDB cluster are started in the following order (The monitoring component is also started):
+The components in the TiDB cluster are started in the following order:
 
-**PD -> TiKV -> Pump -> TiDB -> TiFlash -> Drainer**
+**PD > TiKV > TiDB > TiFlash > TiCDC > Prometheus > Grafana > Alertmanager**
 
 To start the cluster, run the following command:
 
@@ -104,16 +97,16 @@ When the cluster is in operation, if you need to modify the parameters of a comp
         ```
         tidb_servers:
         - host: 10.0.1.11
-            port: 4000
-            config:
-                log.slow-threshold: 300
+          port: 4000
+          config:
+              log.slow-threshold: 300
         ```
 
     For the parameter format, see the [TiUP parameter template](https://github.com/pingcap/tiup/blob/master/embed/examples/cluster/topology.example.yaml).
 
     **Use `.` to represent the hierarchy of the configuration items**.
 
-    For more information on the configuration parameters of components, refer to [TiDB `config.toml.example`](https://github.com/pingcap/tidb/blob/master/config/config.toml.example), [TiKV `config.toml.example`](https://github.com/tikv/tikv/blob/master/etc/config-template.toml), and [PD `config.toml.example`](https://github.com/tikv/pd/blob/master/conf/config.toml).
+    For more information on the configuration parameters of components, refer to [TiDB `config.toml.example`](https://github.com/pingcap/tidb/blob/master/pkg/config/config.toml.example), [TiKV `config.toml.example`](https://github.com/tikv/tikv/blob/master/etc/config-template.toml), and [PD `config.toml.example`](https://github.com/tikv/pd/blob/master/conf/config.toml).
 
 3. Rolling update the configuration and restart the corresponding components by running the `reload` command:
 
@@ -125,7 +118,7 @@ When the cluster is in operation, if you need to modify the parameters of a comp
 
 ### Example
 
-If you want to set the transaction size limit parameter (`txn-total-size-limit` in the [performance](https://github.com/pingcap/tidb/blob/master/config/config.toml.example) module) to `1G` in tidb-server, edit the configuration as follows:
+If you want to set the transaction size limit parameter (`txn-total-size-limit` in the [performance](https://github.com/pingcap/tidb/blob/master/pkg/config/config.toml.example) module) to `1G` in tidb-server, edit the configuration as follows:
 
 ```
 server_configs:
@@ -156,7 +149,7 @@ Flags:
   -N, --node strings           Specify the nodes
       --overwrite              Use this package in the future scale-out operations
   -R, --role strings           Specify the role
-      --transfer-timeout int   Timeout in seconds when transferring PD and TiKV store leaders (default 300)
+      --transfer-timeout int   Timeout in seconds when transferring PD and TiKV store leaders (default 600)
 
 Global Flags:
 
@@ -201,7 +194,7 @@ tiup cluster rename ${cluster-name} ${new-name}
 
 The components in the TiDB cluster are stopped in the following order (The monitoring component is also stopped):
 
-**Drainer -> TiFlash -> TiDB -> Pump -> TiKV -> PD**
+**Alertmanager > Grafana > Prometheus > TiCDC > TiFlash > TiDB > TiKV > PD**
 
 To stop the cluster, run the following command:
 
@@ -290,3 +283,154 @@ The destroy operation stops the services and clears the data directory and deplo
 ```bash
 tiup cluster destroy ${cluster-name}
 ```
+
+## Switch from Prometheus to VictoriaMetrics
+
+In large-scale clusters, Prometheus might encounter performance bottlenecks when handling a large number of instances. Starting from TiUP v1.16.3, TiUP supports switching the monitoring component from Prometheus to VictoriaMetrics (VM) to provide better scalability, higher performance, and lower resource consumption.
+
+### Set up VictoriaMetrics for a new deployment
+
+By default, TiUP uses Prometheus as the metrics monitoring component. To use VictoriaMetrics instead of Prometheus in a new deployment, configure the topology file as follows:
+
+```yaml
+# Monitoring server configuration
+monitoring_servers:
+  # IP address of the monitoring server
+  - host: ip_address
+    ...
+    prom_remote_write_to_vm: true
+    enable_prom_agent_mode: true
+
+# Grafana server configuration
+grafana_servers:
+  # IP address of the Grafana server
+  - host: ip_address
+    ...
+    use_vm_as_datasource: true
+```
+
+### Migrate an existing deployment to VictoriaMetrics
+
+You can perform the migration without affecting running instances. Existing metrics will remain in Prometheus, while TiUP will write new metrics to VictoriaMetrics.
+
+#### Enable VictoriaMetrics remote write
+
+1. Edit the cluster configuration:
+
+    ```bash
+    tiup cluster edit-config ${cluster-name}
+    ```
+
+2. Under `monitoring_servers`, set `prom_remote_write_to_vm` to `true`:
+
+    ```yaml
+    monitoring_servers:
+      - host: ip_address
+        ...
+        prom_remote_write_to_vm: true
+    ```
+
+3. Reload the configuration to apply the changes:
+
+    ```bash
+    tiup cluster reload ${cluster-name} -R prometheus
+    ```
+
+#### Switch the default data source to VictoriaMetrics
+
+1. Edit the cluster configuration:
+
+    ```bash
+    tiup cluster edit-config ${cluster-name}
+    ```
+
+2. Under `grafana_servers`, set `use_vm_as_datasource` to `true`:
+
+    ```yaml
+    grafana_servers:
+      - host: ip_address
+        ...
+        use_vm_as_datasource: true
+    ```
+
+3. Reload the configuration to apply the changes:
+
+    ```bash
+    tiup cluster reload ${cluster-name} -R grafana
+    ```
+
+#### View historical metrics generated before the switch (optional)
+
+If you need to view historical metrics generated before the switch, switch the data source of Grafana as follows:
+
+1. Edit the cluster configuration:
+
+    ```bash
+    tiup cluster edit-config ${cluster-name}
+    ```
+
+2. Under `grafana_servers`, comment out `use_vm_as_datasource`:
+
+    ```yaml
+    grafana_servers:
+      - host: ip_address
+        ...
+        # use_vm_as_datasource: true
+    ```
+
+3. Reload the configuration to apply the changes:
+
+    ```bash
+    tiup cluster reload ${cluster-name} -R grafana
+    ```
+
+4. To switch back to VictoriaMetrics, repeat the steps in [Switch the default data source to VictoriaMetrics](#switch-the-default-data-source-to-victoriametrics).
+
+### Clean up old metrics and services
+
+After confirming that the old metrics have expired, you can perform the following steps to remove redundant services and files. This does not affect the running cluster.
+
+#### Set Prometheus to agent mode
+
+1. Edit the cluster configuration:
+
+    ```bash
+    tiup cluster edit-config ${cluster-name}
+    ```
+
+2. Under `monitoring_servers`, set `enable_prom_agent_mode` to `true`, and ensure you also set `prom_remote_write_to_vm` and `use_vm_as_datasource` correctly:
+
+    ```yaml
+    monitoring_servers:
+      - host: ip_address
+        ...
+        prom_remote_write_to_vm: true
+        enable_prom_agent_mode: true
+    grafana_servers:
+      - host: ip_address
+        ...
+        use_vm_as_datasource: true
+    ```
+
+3. Reload the configuration to apply the changes:
+
+    ```bash
+    tiup cluster reload ${cluster-name} -R prometheus
+    ```
+
+#### Remove expired data directories
+
+1. In the configuration file, locate the `data_dir` path of the monitoring server:
+
+    ```yaml
+    monitoring_servers:
+      - host: ip_address
+        ...
+        data_dir: "/tidb-data/prometheus-8249"
+    ```
+
+2. Remove the data directory:
+
+    ```bash
+    rm -rf /tidb-data/prometheus-8249
+    ```

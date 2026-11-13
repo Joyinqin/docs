@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.11 Release Notes
+summary: TiDB 4.0.11 was released on February 26, 2021. New features include support for `utf8_unicode_ci` and `utf8mb4_unicode_ci` collations. Improvements were made to inner joins, Grafana dashboards, and slow query metrics. Bug fixes address issues with collation, type inference, and function errors. TiKV improvements include support for multiple clusters in Grafana dashboards and bug fixes for memory diagnostics and OOM errors. PD fixes member health metrics and store limit persistence issues. TiFlash bug fixes address decimal type results, data loss, and crash issues. Tools like TiCDC, BR, and TiDB Lightning also received bug fixes and improvements.
 ---
 
 # TiDB 4.0.11 Release Notes
@@ -57,13 +58,13 @@ TiDB version: 4.0.11
 
     + TiCDC
 
-        - Add the version information in the `capture` metadata and add the CLI version of a `changefeed` in the `changefeed` metadata [#1342](https://github.com/pingcap/ticdc/pull/1342)
+        - Add the version information in the `capture` metadata and add the CLI version of a `changefeed` in the `changefeed` metadata [#1342](https://github.com/pingcap/tiflow/pull/1342)
 
     + TiDB Lightning
 
         - Create tables in parallel to improve import performance [#502](https://github.com/pingcap/tidb-lightning/pull/502)
         - Skip splitting Regions to improve import performance if the engine's total size is smaller than the Region size [#524](https://github.com/pingcap/tidb-lightning/pull/524)
-        - Add a import progress bar and optimize the accuracy of restore progress [#506](https://github.com/pingcap/tidb-lightning/pull/506)
+        - Add an import progress bar and optimize the accuracy of restore progress [#506](https://github.com/pingcap/tidb-lightning/pull/506)
 
 ## Bug Fixes
 
@@ -146,16 +147,16 @@ TiDB version: 4.0.11
 
     + TiCDC
 
-        - Fix a bug that the TiCDC service might unexpectedly exit when `ErrTaskStatusNotExists` and the closing of `capture` session occur at the same time [#1240](https://github.com/pingcap/ticdc/pull/1240)
-        - Fix the old value switch issue that a `changefeed` might be affected by another `changefeed` [#1347](https://github.com/pingcap/ticdc/pull/1347)
-        - Fix a bug that the TiCDC service might hang when processing a new `changefeed` with the invalid `sort-engine` parameter [#1309](https://github.com/pingcap/ticdc/pull/1309)
-        - Fix the issue of panic that occurs when getting the debugging information on non-owner nodes [#1349](https://github.com/pingcap/ticdc/pull/1349)
-        - Fix the issue that the `ticdc_processor_num_of_tables` and `ticdc_processor_table_resolved_ts` metrics are not properly updated when adding or removing tables [#1351](https://github.com/pingcap/ticdc/pull/1351)
-        - Fix the issue of potential data loss if a processor crashes when adding a table [#1363](https://github.com/pingcap/ticdc/pull/1363)
-        - Fix a bug that the owner might lead to abnormal TiCDC server exits during table migrations [#1352](https://github.com/pingcap/ticdc/pull/1352)
-        - Fix a bug that TiCDC does not exit in time after the service GC safepoint is lost [#1367](https://github.com/pingcap/ticdc/pull/1367)
-        - Fix a bug that the KV client might skip creating the event feed [#1336](https://github.com/pingcap/ticdc/pull/1336)
-        - Fix a bug that the atomicity of transactions is broken when the transactions are replicated to the downstream [#1375](https://github.com/pingcap/ticdc/pull/1375)
+        - Fix a bug that the TiCDC service might unexpectedly exit when `ErrTaskStatusNotExists` and the closing of `capture` session occur at the same time [#1240](https://github.com/pingcap/tiflow/pull/1240)
+        - Fix the old value switch issue that a `changefeed` might be affected by another `changefeed` [#1347](https://github.com/pingcap/tiflow/pull/1347)
+        - Fix a bug that the TiCDC service might hang when processing a new `changefeed` with the invalid `sort-engine` parameter [#1309](https://github.com/pingcap/tiflow/pull/1309)
+        - Fix the issue of panic that occurs when getting the debugging information on non-owner nodes [#1349](https://github.com/pingcap/tiflow/pull/1349)
+        - Fix the issue that the `ticdc_processor_num_of_tables` and `ticdc_processor_table_resolved_ts` metrics are not properly updated when adding or removing tables [#1351](https://github.com/pingcap/tiflow/pull/1351)
+        - Fix the issue of potential data loss if a processor crashes when adding a table [#1363](https://github.com/pingcap/tiflow/pull/1363)
+        - Fix a bug that the owner might lead to abnormal TiCDC server exits during table migrations [#1352](https://github.com/pingcap/tiflow/pull/1352)
+        - Fix a bug that TiCDC does not exit in time after the service GC safepoint is lost [#1367](https://github.com/pingcap/tiflow/pull/1367)
+        - Fix a bug that the KV client might skip creating the event feed [#1336](https://github.com/pingcap/tiflow/pull/1336)
+        - Fix a bug that the atomicity of transactions is broken when the transactions are replicated to the downstream [#1375](https://github.com/pingcap/tiflow/pull/1375)
 
     + Backup & Restore (BR)
 

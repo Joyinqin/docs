@@ -6,7 +6,7 @@ aliases: ['/docs/dev/statement-summary-tables/','/docs/dev/reference/performance
 
 # Statement Summary Tables
 
-To better handle SQL performance issues, MySQL has provided [statement summary tables](https://dev.mysql.com/doc/refman/5.6/en/statement-summary-tables.html) in `performance_schema` to monitor SQL with statistics. Among these tables, `events_statements_summary_by_digest` is very useful in locating SQL problems with its abundant fields such as latency, execution times, rows scanned, and full table scans.
+To better handle SQL performance issues, MySQL has provided [statement summary tables](https://dev.mysql.com/doc/refman/8.0/en/performance-schema-statement-summary-tables.html) in `performance_schema` to monitor SQL with statistics. Among these tables, `events_statements_summary_by_digest` is very useful in locating SQL problems with its abundant fields such as latency, execution times, rows scanned, and full table scans.
 
 Therefore, starting from v4.0.0-rc.1, TiDB provides system tables in `information_schema` (_not_ `performance_schema`) that are similar to `events_statements_summary_by_digest` in terms of features.
 
@@ -16,11 +16,15 @@ Therefore, starting from v4.0.0-rc.1, TiDB provides system tables in `informatio
 - [`cluster_statements_summary_history`](#statements_summary_evicted)
 - [`statements_summary_evicted`](#statements_summary_evicted)
 
+> **Note:**
+>
+> The preceding tables are not available on [{{{ .starter }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#starter) and [{{{ .essential }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#essential) instances.
+
 This document details these tables and introduces how to use them to troubleshoot SQL performance issues.
 
 ## `statements_summary`
 
-`statements_summary` is a system table in `information_schema`. `statements_summary` groups the SQL statements by the SQL digest and the plan digest, and provides statistics for each SQL category.
+`statements_summary` is a system table in `information_schema`. `statements_summary` groups the SQL statements by the resource group, the SQL digest and the plan digest, and provides statistics for each SQL category.
 
 The "SQL digest" here means the same as used in slow logs, which is a unique identifier calculated through normalized SQL statements. The normalization process ignores constant, blank characters, and is case insensitive. Therefore, statements with consistent syntaxes have the same digest. For example:
 
@@ -82,25 +86,47 @@ The following is a sample output of querying `statements_summary`:
 
 > **Note:**
 >
-> In TiDB, the time unit of fields in statement summary tables is nanosecond (ns), whereas in MySQL the time unit is picosecond (ps).
+> - In TiDB, the time unit of fields in statement summary tables is nanosecond (ns), whereas in MySQL the time unit is picosecond (ps).
+> - Starting from v7.5.1 and v7.6.0, for clusters with [resource control](/tidb-resource-control-ru-groups.md) enabled, `statements_summary` will be aggregated by resource group, for example, the same statements executed in different resource groups will be collected as different records.
+> - For TiDB Self-Managed, starting from v9.0.0, you can use [`tidb_stmt_summary_group_by_user`](/system-variables.md#tidb_stmt_summary_group_by_user) to control whether to aggregate statement summaries by execution user. When this variable is set to `ON`, TiDB aggregates the same SQL digest executed by different users into separate records, and the `SAMPLE_USER` field of each record indicates the user who executed the statement. <CustomContent platform="tidb-cloud" plan="essential,premium">For TiDB Cloud Essential and Premium, `tidb_stmt_summary_group_by_user` is `ON` by default, and it is read-only.</CustomContent>
 
 ## `statements_summary_history`
 
-The table schema of `statements_summary_history` is identical to that of `statements_summary`. `statements_summary_history` saves the historical data of a time range. By checking historical data, you can troubleshoot anomalies and compare monitoring metrics of different time ranges.
+The table schema of `statements_summary_history` is identical to that of `statements_summary`. `statements_summary_history` saves the history data of a time range. By checking history data, you can troubleshoot anomalies and compare monitoring metrics of different time ranges.
 
 The fields `SUMMARY_BEGIN_TIME` and `SUMMARY_END_TIME` represent the start time and the end time of the historical time range.
 
 ## `statements_summary_evicted`
 
-The `tidb_stmt_summary_max_stmt_count` variable controls the maximum number of statements that the `statement_summary` table stores in memory. The `statement_summary` table uses the LRU algorithm. Once the number of SQL statements exceeds the `tidb_stmt_summary_max_stmt_count` value, the longest unused record is evicted from the table. The number of evicted SQL statements during each period is recorded in the `statements_summary_evicted` table.
+The [`tidb_stmt_summary_max_stmt_count`](/system-variables.md#tidb_stmt_summary_max_stmt_count-new-in-v40) system variable limits the number of SQL digests that the `statements_summary` and `statements_summary_history` tables can store in memory totally. Once this limit is exceeded, TiDB evicts the least recently used SQL digests from both `statements_summary` and `statements_summary_history` tables.
 
-The `statements_summary_evicted` table is updated only when a SQL record is evicted from the `statement_summary` table. The `statements_summary_evicted` only records the period during which the eviction occurs and the number of evicted SQL statements.
+<CustomContent platform="tidb">
+
+> **Note:**
+>
+> When [`tidb_stmt_summary_enable_persistent`](#persist-statements-summary) is enabled, data in the `statements_summary_history` table is persisted to the disk. In this case, `tidb_stmt_summary_max_stmt_count` only limits the number of SQL digests that the `statements_summary` table can store in memory, and TiDB evicts the least recently used SQL digests only from the `statements_summary` table when `tidb_stmt_summary_max_stmt_count` is exceeded.
+
+</CustomContent>
+
+The `statements_summary_evicted` table records the period during which the eviction occurs and the number of SQL digests evicted during that period. This table helps you evaluate whether `tidb_stmt_summary_max_stmt_count` is properly configured for your workload. If this table contains records, it indicates that the number of SQL digests exceeded `tidb_stmt_summary_max_stmt_count` at some time point.
+
+<CustomContent platform="tidb">
+
+On the [SQL statements page of TiDB Dashboard](/dashboard/dashboard-statement-list.md#others), the information about evicted statements is displayed in the `Others` row.
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+On the [SQL statements tab of the Diagnosis page](/tidb-cloud/tune-performance.md#statement-analysis), the information about evicted statements is displayed in the `Others` row.
+
+</CustomContent>
 
 ## The `cluster` tables for statement summary
 
 The `statements_summary`, `statements_summary_history`, and `statements_summary_evicted` tables only show the statement summary of a single TiDB server. To query the data of the entire cluster, you need to query the `cluster_statements_summary`, `cluster_statements_summary_history`, or `cluster_statements_summary_evicted` tables.
 
-`cluster_statements_summary` displays the `statements_summary` data of each TiDB server. `cluster_statements_summary_history` displays the `statements_summary_history` data of each TiDB server. `cluster_statements_summary_evicted` displays the `statements_summary_evicted` data of each TiDB server. These tables use the `INSTANCE` field to represent the address of the TiDB server. The other fields are the same as those in `statements_summary`.
+`cluster_statements_summary` displays the `statements_summary` data of each TiDB server. `cluster_statements_summary_history` displays the `statements_summary_history` data of each TiDB server. `cluster_statements_summary_evicted` displays the `statements_summary_evicted` data of each TiDB server. These tables use the `INSTANCE` field to represent the address of the TiDB server. The other fields are the same as those in `statements_summary`, `statements_summary_history`, and `statements_summary_evicted`.
 
 ## Parameter configuration
 
@@ -108,43 +134,42 @@ The following system variables are used to control the statement summary:
 
 - `tidb_enable_stmt_summary`: Determines whether to enable the statement summary feature. `1` represents `enable`, and `0` means `disable`. The feature is enabled by default. The statistics in the system table are cleared if this feature is disabled. The statistics are re-calculated next time this feature is enabled. Tests have shown that enabling this feature has little impact on performance.
 - `tidb_stmt_summary_refresh_interval`: The interval at which the `statements_summary` table is refreshed. The time unit is second (s). The default value is `1800`.
-- `tidb_stmt_summary_history_size`: The size of each SQL statement category stored in the `statements_summary_history` table, which is also the maximum number of records in the `statement_summary_evicted` table. The default value is `24`.
-- `tidb_stmt_summary_max_stmt_count`: Limits the number of SQL statements that can be stored in statement summary tables. The default value is `3000`. If the limit is exceeded, those SQL statements that recently remain unused are cleared. These cleared SQL statements are recorded in the `statement_summary_evicted` table.
+- `tidb_stmt_summary_history_size`: The size of each SQL statement category stored in the `statements_summary_history` table, which is also the maximum number of records in the `statements_summary_evicted` table. The default value is `24`.
+- `tidb_stmt_summary_max_stmt_count`: Limits the number of SQL digests that the `statements_summary` and `statements_summary_history` tables can store in memory totally. The default value is `3000`.
+
+    Once this limit is exceeded, TiDB evicts the least recently used SQL digests from both `statements_summary` and `statements_summary_history` tables. These evicted digests are then counted in the [`statements_summary_evicted`](#statements_summary_evicted) table.
+
+    > **Note:**
+    >
+    > - When a SQL digest is evicted, its related summary data of all time ranges is removed from both the `statements_summary` and `statements_summary_history` tables. As a result, even if the number of SQL digests within a specific time range does not exceed the limit, the number of SQL digests in the `statements_summary_history` table might be less than the actual number of SQL digests. If this situation occurs and affects performance, you are recommended to increase the value of `tidb_stmt_summary_max_stmt_count`.
+    > - For TiDB Self-Managed, when [`tidb_stmt_summary_enable_persistent`](#persist-statements-summary) is enabled, data in the `statements_summary_history` table is persisted to the disk. In this case, `tidb_stmt_summary_max_stmt_count` only limits the number of SQL digests that the `statements_summary` table can store in memory, and TiDB evicts the least recently used SQL digests only from the `statements_summary` table when `tidb_stmt_summary_max_stmt_count` is exceeded.
+
 - `tidb_stmt_summary_max_sql_length`: Specifies the longest display length of `DIGEST_TEXT` and `QUERY_SAMPLE_TEXT`. The default value is `4096`.
 - `tidb_stmt_summary_internal_query`: Determines whether to count the TiDB SQL statements. `1` means to count, and `0` means not to count. The default value is `0`.
-
-> **Note:**
->
-> When a category of SQL statement needs to be removed because the `tidb_stmt_summary_max_stmt_count` limit is exceeded, TiDB removes the data of that SQL statement category of all time ranges from the `statement_summary_history` table. Therefore, even if the number of SQL statement categories in a certain time range does not reach the limit, the number of SQL statements stored in the `statement_summary_history` table is less than the actual number of SQL statements. If this situation occurs and affects performance, you are recommended to increase the value of `tidb_stmt_summary_max_stmt_count`.
+- `tidb_stmt_summary_group_by_user`: Determines whether to aggregate statement summaries by execution user. `1` means to aggregate by user, and `0` means not to aggregate by user. The default value is `0` for TiDB Self-Managed and TiDB Cloud Dedicated, and `1` for TiDB Cloud Essential and Premium. After you enable this variable, TiDB aggregates the same SQL digest executed by different users into separate rows, which might increase the number of statement summary records and memory usage. Modifying this variable clears the current in-memory statement summary data.
+- `tidb_stmt_summary_persist_evicted`: Determines whether to write statement summary records evicted by LRU to the statement summary log after you enable [statements summary persistence](#persist-statements-summary). `1` means to write, and `0` means not to write. The default value is `0`. After you enable this variable, the log contains JSON records marked with `"evicted": true`, and the log volume increases as LRU evictions become more frequent.
 
 An example of the statement summary configuration is shown as follows:
 
 {{< copyable "sql" >}}
 
 ```sql
+set global tidb_stmt_summary_max_stmt_count = 3000;
 set global tidb_enable_stmt_summary = true;
 set global tidb_stmt_summary_refresh_interval = 1800;
 set global tidb_stmt_summary_history_size = 24;
 ```
 
-After the configuration above takes effect, every 30 minutes the `statements_summary` table is cleared. The `statements_summary_history` table stores data generated over the recent 12 hours.
-
-The `statements_summary_evicted` table records the recent 24 periods during which SQL statements are evicted from the statement summary. The `statements_summary_evicted` table is updated every 30 minutes.
-
-The system variables above have two scopes: global and session. These scopes work differently from other system variables:
-
-- After setting the global variable, your setting applies to the whole cluster immediately.
-- After setting the session variable, your setting applies to the current TiDB server immediately. This is useful when you debug on a single TiDB server instance.
-- The session variable has a higher read priority. The global variable is read only when no session variable is set.
-- If you set the session variable to a blank string, the global variable is re-read.
+After the preceding configuration takes effect, the `statements_summary` table is cleared every 30 minutes and the `statements_summary_history` table stores up to 3000 types of SQL statements. For each type, the `statements_summary_history` table stores data for the recent 24 periods. The `statements_summary_evicted` table records the recent 24 periods during which SQL statements are evicted from the statement summary. The `statements_summary_evicted` table is updated every 30 minutes.
 
 > **Note:**
 >
-> The `tidb_stmt_summary_history_size`, `tidb_stmt_summary_max_stmt_count`, and `tidb_stmt_summary_max_sql_length` configuration items affect memory usage. It is recommended that you adjust these configurations based on your needs. It is not recommended to set them too large values.
+> - If a SQL type appears every minute, the `statements_summary_history` stores data for the most recent 12 hours. If a SQL type only appears from 00:00 to 00:30 every day, the `statements_summary_history` stores data for the most recent 24 periods, with each period being 1 day. Therefore, the `statements_summary_history` stores the most recent 24 days of data for this SQL type.
+> - The `tidb_stmt_summary_history_size`, `tidb_stmt_summary_max_stmt_count`, and `tidb_stmt_summary_max_sql_length` configuration items affect memory usage. It is recommended that you adjust these configurations based on your needs, the SQL size, SQL count, and machine configuration. It is not recommended to set them too large values. You can calculate the memory usage using `tidb_stmt_summary_history_size` \* `tidb_stmt_summary_max_stmt_count` \* `tidb_stmt_summary_max_sql_length` \* `3`.
 
 ### Set a proper size for statement summary
 
-After the system has run for a period of time, you can check the `statement_summary` table to see whether SQL eviction has occurred. For example:
+After the system has run for a period of time (depending on the system load), you can check the `statement_summary` table to see whether SQL eviction has occurred. For example:
 
 ```sql
 select @@global.tidb_stmt_summary_max_stmt_count;
@@ -184,13 +209,68 @@ select * from information_schema.statements_summary_evicted;
 2 row in set (0.001 sec)
 ```
 
-From the result above, you can see that a maximum of 59 SQL categories are evicted, which indicates that the proper size of the statement summary is 59 records.
+From the preceding result, you can see that a maximum of 59 SQL categories are evicted. In this case, it is recommended that you increase the size of the `statement_summary` table by at least 59 records, which means increasing the size to at least 3059 records.
 
 ## Limitation
 
-The statement summary tables have the following limitation:
+By default, statements summary tables are saved in memory. When a TiDB server restarts, all data will be lost.
 
-All data of the statement summary tables above will be lost when the TiDB server is restarted. This is because statement summary tables are all memory tables, and the data is cached in memory instead of being persisted on storage.
+<CustomContent platform="tidb">
+
+To address this issue, TiDB v6.6.0 experimentally introduces the [statement summary persistence](#persist-statements-summary) feature, which is disabled by default. After this feature is enabled, the history data is no longer saved in memory, but directly written to disks. In this way, the history data is still available if a TiDB server restarts.
+
+</CustomContent>
+
+## Persist statements summary
+
+<CustomContent platform="tidb-cloud">
+
+This section is only applicable to TiDB Self-Managed. For TiDB Cloud, the value of the `tidb_stmt_summary_enable_persistent` parameter is `false` by default and does not support dynamic modification.
+
+</CustomContent>
+
+> **Warning:**
+>
+> Statements summary persistence is an experimental feature. It is not recommended that you use it in the production environment. This feature might be changed or removed without prior notice. If you find a bug, you can report an [issue](https://github.com/pingcap/tidb/issues) on GitHub.
+
+<CustomContent platform="tidb">
+
+As described in the [Limitation](#limitation) section, statements summary tables are saved in memory by default. Once a TiDB server restarts, all the statements summary will be lost. Starting from v6.6.0, TiDB experimentally provides the configuration item [`tidb_stmt_summary_enable_persistent`](/tidb-configuration-file.md#tidb_stmt_summary_enable_persistent-new-in-v660) to allow users to enable or disable statements summary persistence.
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+As described in the [Limitation](#limitation) section, statements summary tables are saved in memory by default. Once a TiDB server restarts, all the statements summary will be lost. Starting from v6.6.0, TiDB experimentally provides the configuration item `tidb_stmt_summary_enable_persistent` to allow users to enable or disable statements summary persistence.
+
+</CustomContent>
+
+To enable statements summary persistence, you can add the following configuration items to the TiDB configuration file:
+
+```toml
+[instance]
+tidb_stmt_summary_enable_persistent = true
+# The following entries use the default values, which can be modified as needed.
+# tidb_stmt_summary_filename = "tidb-statements.log"
+# tidb_stmt_summary_file_max_days = 3
+# tidb_stmt_summary_file_max_size = 64 # MiB
+# tidb_stmt_summary_file_max_backups = 0
+```
+
+After statements summary persistence is enabled, the memory keeps only the current real-time data and no history data. Once the real-time data is refreshed as history data, the history data is written to the disk at an interval of `tidb_stmt_summary_refresh_interval` described in the [Parameter configuration](#parameter-configuration) section. Queries on the `statements_summary_history` or `cluster_statements_summary_history` table will return results combining both in-memory and on-disk data.
+
+<CustomContent platform="tidb">
+
+> **Note:**
+>
+> - When statements summary persistence is enabled, the `tidb_stmt_summary_history_size` configuration described in the [Parameter configuration](#parameter-configuration) section will no longer take effect because the memory does not keep the history data. Instead, the following three configurations will be used to control the retention period and size of history data for persistence: [`tidb_stmt_summary_file_max_days`](/tidb-configuration-file.md#tidb_stmt_summary_file_max_days-new-in-v660), [`tidb_stmt_summary_file_max_size`](/tidb-configuration-file.md#tidb_stmt_summary_file_max_size-new-in-v660), and [`tidb_stmt_summary_file_max_backups`](/tidb-configuration-file.md#tidb_stmt_summary_file_max_backups-new-in-v660).
+> - The smaller the value of `tidb_stmt_summary_refresh_interval`, the more immediate data is written to the disk. However, this also means more redundant data is written to the disk.
+
+</CustomContent>
+
+> **Note:**
+>
+> For TiDB Self-Managed, starting from v9.0.0, you can enable [`tidb_stmt_summary_persist_evicted`](/system-variables.md#tidb_stmt_summary_persist_evicted) to write records evicted by LRU to the statement summary log. TiDB marks these JSON records with `"evicted": true` so that downstream log consumers can identify them. TiDB does not return these records as query results from `statements_summary_history` or `cluster_statements_summary_history`. <CustomContent platform="tidb-cloud" plan="essential,premium">For TiDB Cloud Essential and Premium, `tidb_stmt_summary_persist_evicted` is read-only.</CustomContent>
 
 ## Troubleshooting examples
 
@@ -268,8 +348,11 @@ Basic fields:
 - `SAMPLE_USER`: The users who execute SQL statements of this category. Only one user is taken.
 - `PLAN_DIGEST`: The digest of the execution plan.
 - `PLAN`: The original execution plan. If there are multiple statements, the plan of only one statement is taken.
+- `BINARY_PLAN`: The original execution plan encoded in binary format. If there are multiple statements, the plan of only one statement is taken. Execute the [`SELECT tidb_decode_binary_plan('xxx...')`](/functions-and-operators/tidb-functions.md#tidb_decode_binary_plan) statement to parse the specific execution plan.
 - `PLAN_CACHE_HITS`: The total number of times that SQL statements of this category hit the plan cache.
 - `PLAN_IN_CACHE`: Indicates whether the previous execution of SQL statements of this category hit the plan cache.
+- `PLAN_CACHE_UNQUALIFIED`: The number of times that the SQL statements of this category fail to hit the plan cache.
+- `PLAN_CACHE_UNQUALIFIED_LAST_REASON`: The reason why the SQL statements of this category fail to hit the plan cache last time.
 
 Fields related to execution time:
 
@@ -277,6 +360,8 @@ Fields related to execution time:
 - `SUMMARY_END_TIME`: The ending time of the current summary period.
 - `FIRST_SEEN`: The time when SQL statements of this category are seen for the first time.
 - `LAST_SEEN`: The time when SQL statements of this category are seen for the last time.
+
+<CustomContent platform="tidb">
 
 Fields related to TiDB server:
 
@@ -295,6 +380,32 @@ Fields related to TiDB server:
 - `MAX_MEM`: The maximum memory (byte) used.
 - `AVG_DISK`: The average disk space (byte) used.
 - `MAX_DISK`: The maximum disk space (byte) used.
+- `AVG_TIDB_CPU_TIME`: The average TiDB server CPU time that SQL statements of this category consume. It shows meaningful values only when the [Top SQL](/dashboard/top-sql.md) feature is enabled. Otherwise the value is always `0`.
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+Fields related to TiDB server:
+
+- `EXEC_COUNT`: Total execution times of SQL statements of this category.
+- `SUM_ERRORS`: The sum of errors occurred during execution.
+- `SUM_WARNINGS`: The sum of warnings occurred during execution.
+- `SUM_LATENCY`: The total execution latency of SQL statements of this category.
+- `MAX_LATENCY`: The maximum execution latency of SQL statements of this category.
+- `MIN_LATENCY`: The minimum execution latency of SQL statements of this category.
+- `AVG_LATENCY`: The average execution latency of SQL statements of this category.
+- `AVG_PARSE_LATENCY`: The average latency of the parser.
+- `MAX_PARSE_LATENCY`: The maximum latency of the parser.
+- `AVG_COMPILE_LATENCY`: The average latency of the compiler.
+- `MAX_COMPILE_LATENCY`: The maximum latency of the compiler.
+- `AVG_MEM`: The average memory (byte) used.
+- `MAX_MEM`: The maximum memory (byte) used.
+- `AVG_DISK`: The average disk space (byte) used.
+- `MAX_DISK`: The maximum disk space (byte) used.
+- `AVG_TIDB_CPU_TIME`: The average TiDB server CPU time that SQL statements of this category consume. It shows meaningful values only when the Top SQL feature is enabled. Otherwise the value is always `0`.
+
+</CustomContent>
 
 Fields related to TiKV Coprocessor task:
 
@@ -313,6 +424,7 @@ Fields related to TiKV Coprocessor task:
 - `MAX_TOTAL_KEYS`: The maximum number of keys that Coprocessor has scanned.
 - `AVG_PROCESSED_KEYS`: The average number of keys that Coprocessor has processed. Compared with `avg_total_keys`, `avg_processed_keys` does not include the old versions of MVCC. A great difference between `avg_total_keys` and `avg_processed_keys` indicates that many old versions exist.
 - `MAX_PROCESSED_KEYS`: The maximum number of keys that Coprocessor has processed.
+- `AVG_TIKV_CPU_TIME`: The average TiKV server CPU time that SQL statements of this category consume.
 
 Transaction-related fields:
 
@@ -339,7 +451,33 @@ Transaction-related fields:
 - `SUM_BACKOFF_TIMES`: The sum of retries when SQL statements of this category encounter errors that require a retry.
 - `BACKOFF_TYPES`: All types of errors that require retries and the number of retries for each type. The format of the field is `type:number`. If there is more than one error type, each is separated by a comma, like `txnLock:2,pdRPC:1`.
 - `AVG_AFFECTED_ROWS`: The average number of rows affected.
-- `PREV_SAMPLE_TEXT`:  When the current SQL statement is `COMMIT`, `PREV_SAMPLE_TEXT` is the previous statement to `COMMIT`. In this case, SQL statements are grouped by the digest and `prev_sample_text`. This means that `COMMIT` statements with different `prev_sample_text` are grouped to different rows. When the current SQL statement is not `COMMIT`, the `PREV_SAMPLE_TEXT` field is an empty string.
+- `PREV_SAMPLE_TEXT`: When the current SQL statement is `COMMIT`, `PREV_SAMPLE_TEXT` is the previous statement to `COMMIT`. In this case, SQL statements are grouped by the digest and `prev_sample_text`. This means that `COMMIT` statements with different `prev_sample_text` are grouped to different rows. When the current SQL statement is not `COMMIT`, the `PREV_SAMPLE_TEXT` field is an empty string.
+
+Fields related to Resource Control:
+
+- `AVG_REQUEST_UNIT_WRITE`: the average number of write RUs consumed by SQL statements.
+- `MAX_REQUEST_UNIT_WRITE`: the maximum number of write RUs consumed by SQL statements.
+- `AVG_REQUEST_UNIT_READ`: the average number of read RUs consumed by SQL statements.
+- `MAX_REQUEST_UNIT_READ`: the maximum number of read RUs consumed by SQL statements.
+- `AVG_QUEUED_RC_TIME`: the average waiting time for available RU when executing SQL statements.
+- `MAX_QUEUED_RC_TIME`: the maximum waiting time for available RU when executing SQL statements.
+- `RESOURCE_GROUP`: the resource group bound to SQL statements.
+
+Fields related to network traffic:
+
+- `SUM_UNPACKED_BYTES_SENT_TIKV_TOTAL`: total bytes sent from SQL statements to TiKV.
+- `SUM_UNPACKED_BYTES_RECEIVED_TIKV_TOTAL`: total bytes received by SQL statements from TiKV.
+- `SUM_UNPACKED_BYTES_SENT_TIKV_CROSS_ZONE`: bytes sent from SQL statements to TiKV across availability zones.
+- `SUM_UNPACKED_BYTES_RECEIVED_TIKV_CROSS_ZONE`: bytes received by SQL statements from TiKV across availability zones.
+- `SUM_UNPACKED_BYTES_SENT_TIFLASH_TOTAL`: total bytes sent from SQL statements to TiFlash, including bytes sent between TiFlash nodes.
+- `SUM_UNPACKED_BYTES_RECEIVED_TIFLASH_TOTAL`: total bytes received by SQL statements from TiFlash, including bytes received between TiFlash nodes.
+- `SUM_UNPACKED_BYTES_SENT_TIFLASH_CROSS_ZONE`: bytes sent from SQL statements to TiFlash across availability zones, including bytes sent between TiFlash nodes across availability zones.
+- `SUM_UNPACKED_BYTES_RECEIVED_TIFLASH_CROSS_ZONE`: bytes received by SQL statements from TiFlash across availability zones, including bytes received between TiFlash nodes across availability zones.
+
+Fields related to storage engines:
+
+- `STORAGE_KV`: introduced in v9.0.0, indicates whether the previous execution of SQL statements of this category read data from TiKV.
+- `STORAGE_MPP`: introduced in v9.0.0, indicates whether the previous execution of SQL statements of this category read data from TiFlash.
 
 ### `statements_summary_evicted` fields description
 

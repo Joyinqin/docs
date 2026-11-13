@@ -1,5 +1,6 @@
 ---
 title: TiDB 4.0.10 Release Notes
+summary: TiDB 4.0.10 was released on January 15, 2021. New features include redacting user data from logs and configurable size limits for key-value entries. Bug fixes address concurrency issues, duplicate bindings, and incorrect results. Improvements include optimized metrics and upgraded dependencies. Various tools have also been updated and fixed, such as TiCDC, Dumpling, Backup & Restore, TiDB Binlog, and TiDB Lightning.
 ---
 
 # TiDB 4.0.10 Release Notes
@@ -33,8 +34,7 @@ TiDB version: 4.0.10
 
     + TiCDC
 
-        - Enable the old value feature for the `maxwell` protocol [#1144](https://github.com/pingcap/ticdc/pull/1144)
-        - Enable the unified sorter feature by default [#1230](https://github.com/pingcap/ticdc/pull/1230)
+        - Enable the unified sorter feature by default [#1230](https://github.com/pingcap/tiflow/pull/1230)
 
     + Dumpling
 
@@ -82,17 +82,16 @@ TiDB version: 4.0.10
 
     + TiCDC
 
-        - Fix the `maxwell` protocol issues, including the issue of `base64` data output and the issue of outputting TSO to unix timestamp [#1173](https://github.com/pingcap/ticdc/pull/1173)
-        - Fix a bug that outdated metadata might cause the newly created changefeed abnormal [#1184](https://github.com/pingcap/ticdc/pull/1184)
-        - Fix the issue of creating the receiver on the closed notifier [#1199](https://github.com/pingcap/ticdc/pull/1199)
-        - Fix a bug that the TiCDC owner might consume too much memory in the etcd watch client [#1227](https://github.com/pingcap/ticdc/pull/1227)
-        - Fix the issue that `max-batch-size` does not take effect [#1253](https://github.com/pingcap/ticdc/pull/1253)
-        - Fix the issue of cleaning up stale tasks before the capture information is constructed [#1280](https://github.com/pingcap/ticdc/pull/1280)
-        - Fix the issue that the recycling of db conn is block because `rollback` is not called in MySQL sink [#1285](https://github.com/pingcap/ticdc/pull/1285)
+        - Fix a bug that outdated metadata might cause the newly created changefeed abnormal [#1184](https://github.com/pingcap/tiflow/pull/1184)
+        - Fix the issue of creating the receiver on the closed notifier [#1199](https://github.com/pingcap/tiflow/pull/1199)
+        - Fix a bug that the TiCDC owner might consume too much memory in the etcd watch client [#1227](https://github.com/pingcap/tiflow/pull/1227)
+        - Fix the issue that `max-batch-size` does not take effect [#1253](https://github.com/pingcap/tiflow/pull/1253)
+        - Fix the issue of cleaning up stale tasks before the capture information is constructed [#1280](https://github.com/pingcap/tiflow/pull/1280)
+        - Fix the issue that the recycling of db conn is block because `rollback` is not called in MySQL sink [#1285](https://github.com/pingcap/tiflow/pull/1285)
 
     + Dumpling
 
-        - Avoid TiDB out of memory (OOM) by setting the default behavior of `tidb_mem_quota_query` [#233](https://github.com/pingcap/dumpling/pull/233)
+        - Avoid TiDB out of memory (OOM) by setting the default behavior of [`tidb_mem_quota_query`](/system-variables.md#tidb_mem_quota_query) [#233](https://github.com/pingcap/dumpling/pull/233)
 
     + Backup & Restore (BR)
 

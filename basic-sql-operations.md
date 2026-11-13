@@ -8,9 +8,13 @@ aliases: ['/docs/dev/basic-sql-operations/','/docs/dev/how-to/get-started/explor
 
 TiDB is compatible with MySQL, you can use MySQL statements directly in most of the cases. For unsupported features, see [Compatibility with MySQL](/mysql-compatibility.md#unsupported-features).
 
-To experiment with SQL and test out TiDB compatibility with MySQL queries, you can [run TiDB directly in your web browser without installing it](https://tour.tidb.io/). You can also first deploy a TiDB cluster and then run SQL statements in it.
+<CustomContent platform="tidb">
 
-This page walks you through the basic TiDB SQL statements such as DDL, DML and CRUD operations. For a complete list of TiDB statements, see [TiDB SQL Syntax Diagram](https://pingcap.github.io/sqlgram/).
+To experiment with SQL and test out TiDB compatibility with MySQL queries, you can try [TiDB Playground](https://play.tidbcloud.com/?utm_source=docs&utm_medium=basic-sql-operations). You can also first deploy a TiDB cluster and then run SQL statements in it.
+
+</CustomContent>
+
+This page walks you through the basic TiDB SQL statements such as DDL, DML and CRUD operations. For a complete list of TiDB statements, see [SQL Statement Overview](/sql-statements/sql-statement-overview.md).
 
 ## Category
 
@@ -96,18 +100,18 @@ For example, to create a table named `person` which includes fields such as numb
 
 ```sql
 CREATE TABLE person (
-    id INT(11),
+    id INT,
     name VARCHAR(255),
     birthday DATE
     );
 ```
 
-To view the statement that creates the table (DDL), use the `SHOW CREATE` statement:
+To view the statement that creates the table (DDL), use the `SHOW CREATE TABLE` statement:
 
 {{< copyable "sql" >}}
 
 ```sql
-SHOW CREATE table person;
+SHOW CREATE TABLE person;
 ```
 
 To delete a table, use the `DROP TABLE` statement:

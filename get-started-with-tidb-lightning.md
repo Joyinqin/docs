@@ -1,66 +1,69 @@
 ---
-title: TiDB Lightning Tutorial
-summary: Learn how to deploy TiDB Lightning and import full backup data to TiDB.
+title: Get Started with TiDB Lightning
 aliases: ['/docs/dev/get-started-with-tidb-lightning/','/docs/dev/how-to/get-started/tidb-lightning/']
+summary: TiDB Lightning is a tool for importing MySQL data into a TiDB cluster. It is recommended for test and trial purposes only, not for production or development environments. The process involves preparing full backup data, deploying the TiDB cluster, installing TiDB Lightning, starting TiDB Lightning, and checking data integrity. For detailed features and usage, refer to the TiDB Lightning Overview.
 ---
 
-# TiDB Lightning Tutorial
+# Get Started with TiDB Lightning
 
-[TiDB Lightning](https://github.com/pingcap/tidb-lightning) is a tool used for fast full import of large amounts of data into a TiDB cluster. Currently, TiDB Lightning supports reading SQL dump exported via SQL or CSV data source. You can use it in the following two scenarios:
-
-+ Import **large amounts** of **new** data **quickly**
-+ Back up and restore all the data
-
-![Architecture of TiDB Lightning tool set](/media/tidb-lightning-architecture.png)
-
-## Prerequisites
-
-This tutorial assumes you use several new and clean CentOS 7 instances. You can use VMware, VirtualBox or other tools to deploy a virtual machine locally or a small cloud virtual machine on a vendor-supplied platform. Because TiDB Lightning consumes a large amount of computer resources, it is recommended that you allocate at least 16 GB memory and CPU of 32 cores for running it with the best performance.
+This document provides a quick guide on getting started with TiDB Lightning by importing MySQL data into a TiDB cluster.
 
 > **Warning:**
 >
 > The deployment method in this tutorial is only recommended for test and trial. **Do not apply it in the production or development environment.**
 
-## Prepare full backup data
+## Step 1: Prepare full backup data
 
-First, use [`dumpling`](/dumpling-overview.md) to export data from MySQL:
+First, use [Dumpling](/dumpling-overview.md) to export data from MySQL.
 
-{{< copyable "shell-regular" >}}
+1. Run `tiup --version` to check if TiUP is already installed. If TiUP is installed, skip this step. If TiUP is not installed, run the following command:
 
-```sh
-./bin/dumpling -h 127.0.0.1 -P 3306 -u root -t 16 -F 256MB -B test -f 'test.t[12]' -o /data/my_database/
+    ```
+    curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh
+    ```
+
+2. Using TiUP to install Dumpling:
+
+    ```shell
+    tiup install dumpling
+    ```
+
+3. To export data from MySQL, you can refer to the detailed steps provided in [Use Dumpling to Export Data](/dumpling-overview.md#export-to-sql-files):
+
+    ```sh
+    tiup dumpling -h 127.0.0.1 -P 3306 -u root -t 16 -F 256MB -B test -f 'test.t[12]' -o /data/my_database/
+    ```
+
+    In the above command:
+
+    - `-t 16`: Export data using 16 threads.
+    - `-F 256MB`: Split each table into multiple files, with each file approximately 256 MB in size.
+    - `-B test`: Export from the `test` database.
+    - `-f 'test.t[12]'`: Export only the two tables `test.t1` and `test.t2`.
+
+    The full backup data exported will be saved in the `/data/my_database` directory.
+
+## Step 2: Deploy the TiDB cluster
+
+Before starting the data import, you need to deploy a TiDB cluster for the import. If you already have a TiDB cluster, you can skip this step.
+
+For the steps on deploying a TiDB cluster, refer to the [Quick Start with TiDB Self-Managed](/quick-start-with-tidb.md).
+
+## Step 3: Install TiDB Lightning
+
+It is recommended to use the same version of TiDB Lightning as the target TiDB cluster. Run the following command to install TiDB Lightning, replacing `<version>` with the version of the target TiDB cluster (for example, `v{{{ .tidb-version }}}`):
+
+```shell
+tiup install tidb-lightning:<version>
 ```
 
-In the above command:
-
-- `-B test`: means the data is exported from the `test` database.
-- `-f test.t[12]`: means only the `test.t1` and `test.t2` tables are exported.
-- `-t 16`: means 16 threads are used to export the data.
-- `-F 256MB`: means a table is partitioned into chunks and one chunk is 256 MB.
-
-After executing this command, the full backup data is exported to the `/data/my_database` directory.
-
-## Deploy TiDB Lightning
-
-### Step 1: Deploy TiDB cluster
-
-Before the data import, you need to deploy a TiDB cluster. In this tutorial, TiDB v5.0.0 is used as an example. For the deployment method, refer to [Deploy a TiDB Cluster Using TiUP](/production-deployment-using-tiup.md).
-
-### Step 2: Download TiDB Lightning installation package
-
-Download the TiDB Lightning installation package from the following link:
-
-- **v5.0.0**: [tidb-toolkit-v5.0.0-linux-amd64.tar.gz](https://download.pingcap.org/tidb-toolkit-v5.0.0-linux-amd64.tar.gz)
+## Step 4: Start TiDB Lightning
 
 > **Note:**
 >
-> TiDB Lightning is compatible with TiDB clusters of earlier versions. It is recommended that you download the latest stable version of the TiDB Lightning installation package.
+> The import method in this section is only suitable for testing and functional experience. For production environments, refer to [Migrate Large Datasets from MySQL to TiDB](/migrate-large-mysql-to-tidb.md)
 
-### Step 3: Start `tidb-lightning`
-
-1. Upload `bin/tidb-lightning` and `bin/tidb-lightning-ctl` in the package to the server where TiDB Lightning is deployed.
-2. Upload the [prepared data source](#prepare-full-backup-data) to the server.
-3. Configure `tidb-lightning.toml` as follows:
+1. Create the configuration file `tidb-lightning.toml` and fill in the following settings based on your cluster information:
 
     ```toml
     [lightning]
@@ -69,10 +72,9 @@ Download the TiDB Lightning installation package from the following link:
     file = "tidb-lightning.log"
 
     [tikv-importer]
-    # Uses the Local-backend
+    # Configure the import mode
     backend = "local"
-    # Sets the directory for temporarily storing the sorted key-value pairs.
-    # The target directory must be empty.
+    # Sets the directory for temporarily storing the sorted key-value pairs. The target directory must be empty.
     sorted-kv-dir = "/mnt/ssd/sorted-kv-dir"
 
     [mydumper]
@@ -90,20 +92,18 @@ Download the TiDB Lightning installation package from the following link:
     password = "rootroot"
     # Table schema information is fetched from TiDB via this status-port.
     status-port = 10080
-    # The PD address of the cluster
-    pd-addr = "172.16.31.3:2379"
+    # The PD address of the cluster. Starting from v7.6.0, TiDB supports setting multiple PD addresses.
+    pd-addr = "172.16.31.3:2379,56.78.90.12:3456"
     ```
 
-4. After configuring the parameters properly, use a `nohup` command to start the `tidb-lightning` process. If you directly run the command in the command-line, the process might exit because of the SIGHUP signal received. Instead, it's preferable to run a bash script that contains the `nohup` command:
+2. Run `tidb-lightning`. To avoid the program exiting due to the `SIGHUP` signal when starting the program directly in the command line using `nohup`, it is recommended to put the `nohup` command in a script. In the following example, replace `<version>` with the TiDB Lightning version installed in [Step 3](#step-3-install-tidb-lightning):
 
-    {{< copyable "shell-regular" >}}
-
-    ```sh
+    ```shell
     #!/bin/bash
-    nohup ./tidb-lightning -config tidb-lightning.toml > nohup.out &
+    nohup tiup tidb-lightning:<version> -config tidb-lightning.toml > nohup.out &
     ```
 
-### Step 4: Check data integrity
+## Step 5: Check data integrity
 
 After the import is completed, TiDB Lightning exits automatically. If the import is successful, you can find `tidb lightning exit` in the last line of the log file.
 
@@ -114,3 +114,9 @@ If any error occurs, refer to [TiDB Lightning FAQs](/tidb-lightning/tidb-lightni
 This tutorial briefly introduces what TiDB Lightning is and how to quickly deploy a TiDB Lightning cluster to import full backup data to the TiDB cluster.
 
 For detailed features and usage about TiDB Lightning, refer to [TiDB Lightning Overview](/tidb-lightning/tidb-lightning-overview.md).
+
+## Related resources
+
+<RelatedResources>
+  <ResourceCard title="TiDB Admin Lab 6: Importing Data into TiDB Using TiDB Lightning" type="lab" link="https://labs.tidb.io/labs/dba_303_lab_ff5" imgSrc="https://lab-static.pingcap.com/quick-demo/dba_303_ch07_en.png" duration="60 mins" />
+</RelatedResources>

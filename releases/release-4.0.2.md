@@ -1,6 +1,7 @@
 ---
 title: TiDB 4.0.2 Release Notes
 aliases: ['/docs/dev/releases/release-4.0.2/']
+summary: TiDB 4.0.2 was released on July 1, 2020. The new version includes compatibility changes, new features, improvements, bug fixes, and new changes. Some highlights include support for new aggregate functions, improvements in query latency, and bug fixes related to execution plan, runtime errors, and data replication. Additionally, there are new features and improvements in TiKV, PD, TiFlash, and Tools.
 ---
 
 # TiDB 4.0.2 Release Notes
@@ -67,9 +68,9 @@ TiDB version: 4.0.2
 
     - TiCDC
 
-        - Support migrating sub-tasks to new `capture`s [#665](https://github.com/pingcap/ticdc/pull/665)
-        - Add a `cli` command to delete the TiCDC GC TTL [#652](https://github.com/pingcap/ticdc/pull/652)
-        - Support canal protocol in MQ sink [#649](https://github.com/pingcap/ticdc/pull/649)
+        - Support migrating sub-tasks to new `capture`s [#665](https://github.com/pingcap/tiflow/pull/665)
+        - Add a `cli` command to delete the TiCDC GC TTL [#652](https://github.com/pingcap/tiflow/pull/652)
+        - Support canal protocol in MQ sink [#649](https://github.com/pingcap/tiflow/pull/649)
 
 ## Improvements
 

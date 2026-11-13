@@ -1,6 +1,7 @@
 ---
 title: TiDB 3.0.8 Release Notes
 aliases: ['/docs/dev/releases/release-3.0.8/','/docs/dev/releases/3.0.8/']
+summary: TiDB 3.0.8 was released on December 31, 2019. It includes various fixes and improvements for SQL optimizer, SQL execution engine, DDL, server, transaction, monitor, TiKV, PD, and TiDB Ansible. Notable changes include SQL binding plan fixes, error message optimizations, and support for certificate-based authentication. The default value of `tidb_txn_mode` variable is updated to `"pessimistic"`. PD also received performance optimizations and bug fixes. TiDB Ansible saw various logic optimizations and upgrades.
 ---
 
 # TiDB 3.0.8 Release Notes
@@ -46,10 +47,10 @@ TiDB Ansible version: 3.0.8
     - Modify the TiDB behavior from using the current database to reporting the `No database selected` error when the `GRANT` statement does not specify a database name, to keep compatibility with the MySQL behavior [#13784](https://github.com/pingcap/tidb/pull/13784)
     - Modify the execution privilege for the `REVOKE` statement from `SuperPriv` to `REVOKE` being executable only if the user has the privilege for the corresponding schema, to keep consistency with the MySQL behavior [#13306](https://github.com/pingcap/tidb/pull/13306)
     - Fix the issue that `GrantPriv` is mistakenly granted to the target user when the `GRANT ALL` syntax does not contain `WITH GRANT OPTION` [#13943](https://github.com/pingcap/tidb/pull/13943)
-    - Fix the issue that the error message does not contain the cause for the `LOAD DATA` statement’s wrong behavior when `LoadDataInfo` fails to call `addRecord` [#13980](https://github.com/pingcap/tidb/pull/13980)
+    - Fix the issue that the error message does not contain the cause for the `LOAD DATA` statement's wrong behavior when `LoadDataInfo` fails to call `addRecord` [#13980](https://github.com/pingcap/tidb/pull/13980)
     - Fix the issue that wrong slow query information is output because multiple SQL statements in a query share the same `StartTime` [#13898](https://github.com/pingcap/tidb/pull/13898)
     - Fix the issue that the memory might leak when `batchClient` processes a large transaction [#14032](https://github.com/pingcap/tidb/pull/14032)
-    - Fix the issue that `system_time_zone` is always displayed as `CST` and now TiDB’s `system_time_zone` is obtained from `systemTZ` in the `mysql.tidb` table [#14086](https://github.com/pingcap/tidb/pull/14086)
+    - Fix the issue that `system_time_zone` is always displayed as `CST` and now TiDB's `system_time_zone` is obtained from `systemTZ` in the `mysql.tidb` table [#14086](https://github.com/pingcap/tidb/pull/14086)
     - Fix the issue that the `GRANT ALL` syntax does not grant all privileges to the user [#14092](https://github.com/pingcap/tidb/pull/14092)
     - Fix the issue that the `Priv_create_user` privilege is invalid for `CREATE ROLE` and `DROP ROLE` [#14088](https://github.com/pingcap/tidb/pull/14088)
     - Modify the error code of `ErrInvalidFieldSize` from `1105(Unknow Error)` to `3013` [#13737](https://github.com/pingcap/tidb/pull/13737)
@@ -65,7 +66,7 @@ TiDB Ansible version: 3.0.8
 + Transaction
     - Update the default value of the `tidb_txn_mode` variable from `""` to `"pessimistic"` when a new cluster is created [#14171](https://github.com/pingcap/tidb/pull/14171)
     - Fix the issue that the lock waiting time is too long for a pessimistic transaction because the lock waiting time for a single statement is not reset when a transaction is retried [#13990](https://github.com/pingcap/tidb/pull/13990)
-    - Fix the issue that wrong data might be read because unmodified data is unlocked for the pessimistic transaction model [#14050](https://github.com/pingcap/tidb/pull/14050)
+    - Fix the issue that wrong data might be read because unmodified data is unlocked for the pessimistic transaction mode [#14050](https://github.com/pingcap/tidb/pull/14050)
     - Fix repeated insert value restriction checks because transaction types are not distinguished when prewrite is performed in mocktikv [#14175](https://github.com/pingcap/tidb/pull/14175)
     - Fix the panic because transactions are not correctly handled when `session.TxnState` is `Invalid` [#13988](https://github.com/pingcap/tidb/pull/13988)
     - Fix the issue that the `ErrConfclit` structure in mocktikv does not contain `ConflictCommitTS` [#14080](https://github.com/pingcap/tidb/pull/14080)

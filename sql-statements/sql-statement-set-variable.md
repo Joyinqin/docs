@@ -6,7 +6,11 @@ aliases: ['/docs/dev/sql-statements/sql-statement-set-variable/','/docs/dev/refe
 
 # `SET [GLOBAL|SESSION] <variable>`
 
-The statement `SET [GLOBAL|SESSION]` modifies one of TiDB's built in variables, of either `SESSION` or `GLOBAL` scope.
+The statement `SET [GLOBAL|SESSION]` modifies one of TiDB's built in variables. These variables can be [system variables](/system-variables.md) of either `SESSION` or `GLOBAL` scope or [user variables](/user-defined-variables.md).
+
+> **Warning:**
+>
+> User-defined variables are still an experimental feature. It is **NOT** recommended that you use them in the production environment.
 
 > **Note:**
 >
@@ -14,13 +18,14 @@ The statement `SET [GLOBAL|SESSION]` modifies one of TiDB's built in variables, 
 
 ## Synopsis
 
-**SetStmt:**
+```ebnf+diagram
+SetVariableStmt ::=
+    "SET" Variable "=" Expression ("," Variable "=" Expression )*
 
-![SetStmt](/media/sqlgram/SetStmt.png)
-
-**VariableAssignment:**
-
-![VariableAssignment](/media/sqlgram/VariableAssignment.png)
+Variable ::=
+    ("GLOBAL" | "SESSION") SystemVariable
+|   UserVariable 
+```
 
 ## Examples
 
@@ -82,13 +87,35 @@ mysql> SHOW SESSION VARIABLES LIKE 'sql_mode';
 1 row in set (0.00 sec)
 ```
 
+User variables start with a `@`.
+
+```sql
+SET @myvar := 5;
+Query OK, 0 rows affected (0.00 sec)
+
+SELECT @myvar, @myvar + 1;
++--------+------------+
+| @myvar | @myvar + 1 |
++--------+------------+
+|      5 |          6 |
++--------+------------+
+1 row in set (0.00 sec)
+```
+
 ## MySQL compatibility
 
 The following behavior differences apply:
 
-* Changes made with `SET GLOBAL` will be propagated to all TiDB instances in the cluster. This differs from MySQL, where changes do not propagate to replicas.
+* In MySQL, changes made with `SET GLOBAL` do not apply to replicas. However in TiDB, the scope of `SET GLOBAL` depends on the specific system variable:
+
+    * Global variables: for most system variables (for example, those that affect cluster behavior or optimizer behavior), changes made with `SET GLOBAL` apply to all TiDB instances in the cluster.
+    * Instance-level variables: for some system variables (for example, `max_connections`), changes made with `SET GLOBAL` apply only to the TiDB instance that the current connection is using.
+
+    Therefore, when using `SET GLOBAL` to modify a variable, always check the [documentation](/system-variables.md) of that variable, especially the "Persists to cluster" attribute, to confirm the scope of the change.
+
 * TiDB presents several variables as both readable and settable. This is required for MySQL compatibility, because it is common for both applications and connectors to read MySQL variables. For example: JDBC connectors both read and set query cache settings, despite not relying on the behavior.
 * Changes made with `SET GLOBAL` will persist through TiDB server restarts. This means that `SET GLOBAL` in TiDB behaves more similar to `SET PERSIST` as available in MySQL 8.0 and above.
+* TiDB does not support `SET PERSIST` and `SET PERSIST_ONLY`, because TiDB persists global variables.
 
 ## See also
 

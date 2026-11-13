@@ -8,7 +8,7 @@ aliases: ['/docs/dev/alert-rules/','/docs/dev/reference/alert-rules/']
 
 # TiDB Cluster Alert Rules
 
-This document describes the alert rules for different components in a TiDB cluster, including the rule descriptions and solutions of the alert items in TiDB, TiKV, PD, TiFlash, TiDB Binlog, Node_exporter and Blackbox_exporter.
+This document describes the alert rules for different components in a TiDB cluster, including the rule descriptions and solutions of the alert items in TiDB, TiKV, PD, TiFlash, TiCDC, Node_exporter and Blackbox_exporter.
 
 According to the severity level, alert rules are divided into three categories (from high to low): emergency-level, critical-level, and warning-level. This division of severity levels applies to all alert items of each component below.
 
@@ -46,11 +46,11 @@ This section gives the alert rules for the TiDB component.
 
 * Description:
 
-    When TiDB accesses TiKV, a Region error occurs. When the error is reported over 6000 times in 10 minutes, an alert is triggered.
+    TiDB server accesses the Region leader of TiKV according to its own cache information. If the Region leader has changed or the current TiKV Region information is inconsistent with that in the TiDB cache, a Region cache error occurs. When the error is reported over 6000 times in 10 minutes, an alert is triggered.
 
 * Solution:
 
-    View the monitoring status of TiKV.
+    View [**TiKV-Details** > **Cluster** dashboard](/grafana-tikv-dashboard.md#cluster) to see if the leader is balanced.
 
 #### `TiDB_domain_load_schema_total`
 
@@ -65,21 +65,6 @@ This section gives the alert rules for the TiDB component.
 * Solution:
 
     Same as [`TiDB_schema_error`](#tidb_schema_error).
-
-#### `TiDB_monitor_keep_alive`
-
-* Alert rule:
-
-    `increase(tidb_monitor_keep_alive_total[10m]) < 100`
-
-* Description:
-
-    Indicates whether the TiDB process still exists. If the number of times for `tidb_monitor_keep_alive_total` increases less than 100 in 10 minutes, the TiDB process might already exit and an alert is triggered.
-
-* Solution:
-
-    * Check whether the TiDB process is out of memory.
-    * Check whether the machine has restarted.
 
 ### Critical-level alerts
 
@@ -121,7 +106,7 @@ This section gives the alert rules for the TiDB component.
 
 * Description:
 
-    The latency of handling a request in TiDB. If the ninety-ninth percentile latency exceeds 1 second, an alert is triggered.
+    The latency of handling a request in TiDB. The response time for 99% of requests should be within 1 second; otherwise, an alert is triggered.
 
 * Solution:
 
@@ -138,18 +123,17 @@ This section gives the alert rules for the TiDB component.
     The number of events that happen in the TiDB service. An alert is triggered when the following events happen:
 
     1. start: The TiDB service starts.
-    2. hang: When a critical-level event (currently there is only one scenario: TiDB cannot write binlog) happens, TiDB enters the `hang` mode and waits to be killed manually.
+    2. hang: When a critical-level event happens, TiDB enters the `hang` mode and waits to be killed manually.
 
 * Solution:
 
-    * Restart TiDB to recover the service.
-    * Check whether the TiDB Binlog service is normal.
+    Restart TiDB to recover the service.
 
-#### `TiDB_tikvclient_backoff_total`
+#### `TiDB_tikvclient_backoff_seconds_count`
 
 * Alert rule:
 
-    `increase(tidb_tikvclient_backoff_total[10m]) > 10`
+    `increase(tidb_tikvclient_backoff_seconds_count[10m]) > 10`
 
 * Description:
 
@@ -193,20 +177,20 @@ This section gives the alert rules for the PD component.
 
 ### Emergency-level alerts
 
-#### `PD_cluster_offline_tikv_nums`
+#### `PD_cluster_down_store_nums`
 
 * Alert rule:
 
-    `sum(pd_cluster_status{type="store_down_count"}) > 0`
+    `(sum(pd_cluster_status{type="store_down_count"}) by (instance) > 0) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
-    PD has not received a TiKV heartbeat for a long time (the default configuration is 30 minutes).
+    PD has not received a TiKV/TiFlash heartbeat for a long time (the default configuration is 30 minutes).
 
 * Solution:
 
-    * Check whether the TiKV process is normal, the network is isolated or the load is too high, and recover the service as much as possible.
-    * If the TiKV instance cannot be recovered, you can make it offline.
+    * Check whether the TiKV/TiFlash process is normal, the network is isolated or the load is too high, and recover the service as much as possible.
+    * If the TiKV/TiFlash instance cannot be recovered, you can make it offline.
 
 ### Critical-level alerts
 
@@ -214,7 +198,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[1m])) by (instance,job,le)) > 1`
+    `histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[1m])) by (instance, job, le)) > 1`
 
 * Description:
 
@@ -230,51 +214,65 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `sum(pd_regions_status{type="miss_peer_region_count"}) > 100`
+    `(sum(pd_regions_status{type="miss-peer-region-count"}) by (instance) > 100) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
-    The number of Region replicas is smaller than the value of `max-replicas`. When a TiKV machine is down and its downtime exceeds `max-down-time`, it usually leads to missing replicas for some Regions during a period of time. 
+    The number of Region replicas is smaller than the value of `max-replicas`.
 
 * Solution:
 
     * Find the cause of the issue by checking whether there is any TiKV machine that is down or being made offline.
-    * Watch the Region health panel and see whether `miss_peer_region_count` is continuously decreasing.
+    * Watch the Region health panel and see whether `miss-peer-region-count` is continuously decreasing.
 
 ### Warning-level alerts
 
-#### `PD_cluster_lost_connect_tikv_nums`
+#### `PD_cluster_lost_connect_store_nums`
 
 * Alert rule:
 
-    `sum(pd_cluster_status{type="store_disconnected_count"}) > 0`
+    `(sum(pd_cluster_status{type="store_disconnected_count"}) by (instance) > 0) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
-    PD does not receive a TiKV heartbeat within 20 seconds. Normally a TiKV heartbeat comes in every 10 seconds.
+    PD does not receive a TiKV/TiFlash heartbeat within 20 seconds. Normally a TiKV/TiFlash heartbeat comes in every 10 seconds.
 
 * Solution:
 
-    * Check whether the TiKV instance is being restarted.
-    * Check whether the TiKV process is normal, the network is isolated, and the load is too high, and recover the service as much as possible.
-    * If you confirm that the TiKV instance cannot be recovered, you can make it offline.
-    * If you confirm that the TiKV instance can be recovered, but not in the short term, you can consider increasing the value of `max-down-time`. It will prevent the TiKV instance from being considered as irrecoverable and the data from being removed from the TiKV.
+    * Check whether the TiKV/TiFlash instance is being restarted.
+    * Check whether the TiKV/TiFlash process is normal, the network is isolated, and the load is too high, and recover the service as much as possible.
+    * If you confirm that the TiKV/TiFlash instance cannot be recovered, you can make it offline.
+    * If you confirm that the TiKV/TiFlash instance can be recovered, but not in the short term, you can consider increasing the value of `max-down-time`. It will prevent the TiKV/TiFlash instance from being considered as irrecoverable and the data from being removed from the TiKV/TiFlash.
+
+#### `PD_cluster_unhealthy_tikv_nums`
+
+* Alert rule:
+
+    `(sum(pd_cluster_status{type="store_unhealth_count"}) by (instance) > 0) and (sum(etcd_server_is_leader) by (instance) > 0)`
+
+* Description:
+
+    Indicates that there are unhealthy stores. If the situation persists for some time (configured by [`max-store-down-time`](/pd-configuration-file.md#max-store-down-time), defaults to `30m`), the store is likely to change to `Offline` state, which triggers the [`PD_cluster_down_store_nums`](#pd_cluster_down_store_nums) alert.
+
+* Solution:
+
+    Check the state of the TiKV stores.
 
 #### `PD_cluster_low_space`
 
 * Alert rule:
 
-    `sum(pd_cluster_status{type="store_low_space_count"}) > 0`
+    `(sum(pd_cluster_status{type="store_low_space_count"}) by (instance) > 0) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
-    Indicates that there is no sufficient space on the TiKV node.
+    Indicates that there is no sufficient space on the TiKV/TiFlash node.
 
 * Solution:
 
     * Check whether the space in the cluster is generally insufficient. If so, increase its capacity.
     * Check whether there is any issue with Region balance scheduling. If so, it will lead to uneven data distribution.
-    * Check whether there is any file that occupies a large amount of disk space, such as the log, snapshot, core dump, etc.
+    * Check whether there is any file that occupies a large amount of disk space, such as the log, snapshot, and core dump.
     * Lower the Region weight of the node to reduce the data volume.
     * When it is not possible to release the space, consider proactively making the node offline. This prevents insufficient disk space that leads to downtime.
 
@@ -282,7 +280,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `histogram_quantile(0.99, sum(rate(etcd_network_peer_round_trip_time_seconds_bucket[1m])) by (To,instance,job,le)) > 1`
+    `histogram_quantile(0.99, sum(rate(etcd_network_peer_round_trip_time_seconds_bucket[1m])) by (To, instance, job, le)) > 1`
 
 * Description:
 
@@ -297,7 +295,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `histogram_quantile(0.99, sum(rate(pd_client_request_handle_requests_duration_seconds_bucket{type="tso"}[1m])) by (instance,job,le)) > 0.1`
+    `histogram_quantile(0.99, sum(rate(pd_client_request_handle_requests_duration_seconds_bucket{type="tso"}[1m])) by (instance, job, le)) > 0.1`
 
 * Description:
 
@@ -314,7 +312,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `sum(pd_regions_status{type="down_peer_region_count"}) > 0`
+    `(sum(pd_regions_status{type="down-peer-region-count"}) by (instance)  > 0) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
@@ -330,7 +328,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `sum(pd_regions_status{type="pending_peer_region_count"}) > 100`
+    `(sum(pd_regions_status{type="pending-peer-region-count"}) by (instance) > 100) and (sum(etcd_server_is_leader) by (instance) > 0)`
 
 * Description:
 
@@ -345,7 +343,7 @@ This section gives the alert rules for the PD component.
 
 * Alert rule:
 
-    `count(changes(pd_server_tso{type="save"}[10m]) > 0) >= 2`
+    `count(changes(pd_tso_events{type="save"}[10m]) > 0) >= 2`
 
 * Description:
 
@@ -353,7 +351,7 @@ This section gives the alert rules for the PD component.
 
 * Solution:
 
-    * Exclude the human factors, such as restarting PD, manually transferring leader, adjusting leader priority, etc.
+    * Exclude the human factors, such as restarting PD, manually transferring leader, and adjusting leader priority.
     * Check the network and system load status.
     * If the problematic PD instance cannot be recovered due to environmental factors, make it offline and replace it.
 
@@ -370,13 +368,13 @@ This section gives the alert rules for the PD component.
 * Solution:
 
     * Check whether it is needed to increase capacity.
-    * Check whether there is any file that occupies a large amount of disk space, such as the log, snapshot, core dump, etc.
+    * Check whether there is any file that occupies a large amount of disk space, such as the log, snapshot, and core dump.
 
 #### `PD_system_time_slow`
 
 * Alert rule:
 
-    `changes(pd_server_tso{type="system_time_slow"}[10m]) >= 1`
+    `changes(pd_tso_events{type="system_time_slow"}[10m]) >= 1`
 
 * Description:
 
@@ -401,6 +399,23 @@ This section gives the alert rules for the PD component.
     * Check whether there is enough space in the store.
     * Check whether there is any store for additional replicas according to the label configuration if it is configured.
 
+#### `PD_cluster_slow_tikv_nums`
+
+* Alert rule:
+
+    `sum(pd_cluster_status{type="store_slow_count"}) by (instance) > 0) and (sum(etcd_server_is_leader) by (instance) > 0`
+
+* Description:
+
+    There is a slow TiKV node. `raftstore.inspect-interval` controls the detection of TiKV slow nodes. For more information, see [`raftstore.inspect-interval`](/tikv-configuration-file.md#inspect-interval).
+
+* Solution:
+
+    * Watch the [**TiKV-Details** > **PD** dashboard](/grafana-tikv-dashboard.md#pd) and view the Store Slow Score metric. Identify the node with a metric value exceeding 80, which is detected as a slow node.
+    * Watch the [**TiKV-Details** > **Raft IO** dashboard](/grafana-tikv-dashboard.md#raft-io) and see whether the latency increases. If the latency is high, it means a bottleneck might exist in the disk.
+    * Set the [`raftstore.inspect-interval`](/tikv-configuration-file.md#inspect-interval) configuration item to a larger value to increase the timeout limit of latency.
+    * For further analysis of performance issues of the alerted TiKV node and tuning methods, see [Performance analysis and tuning](/performance-tuning-methods.md#storage-async-write-duration-store-duration-and-apply-duration).
+
 ## TiKV alert rules
 
 This section gives the alert rules for the TiKV component.
@@ -419,13 +434,13 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    Adjust the `block-cache-size` value of both `rockdb.defaultcf` and `rocksdb.writecf`.
+    Adjust the `block-cache-size` value of both `rocksdb.defaultcf` and `rocksdb.writecf`.
 
 #### `TiKV_GC_can_not_work`
 
 * Alert rule:
 
-    `sum(increase(tikv_gcworker_gc_tasks_vec{task="gc"}[1d])) < 1 and sum(increase(tikv_gc_compaction_filter_perform[1d])) < 1`
+    `sum(increase(tikv_gcworker_gc_tasks_vec{task="gc"}[1d])) < 1 and (sum(increase(tikv_gc_compaction_filter_perform[1d])) < 1 and sum(increase(tikv_engine_event_total{db="kv", cf="write", type="compaction"}[1d])) >= 1)`
 
 * Description:
 
@@ -435,7 +450,7 @@ This section gives the alert rules for the TiKV component.
 
     1. Perform `SELECT VARIABLE_VALUE FROM mysql.tidb WHERE VARIABLE_NAME = "tikv_gc_leader_desc"` to locate the `tidb-server` corresponding to the GC leader;
     2. View the log of the `tidb-server`, and grep gc_worker tidb.log;
-    3. If you find that the GC worker has been resolving locks (the last log is "start resolve locks") or deleting ranges (the last log is “start delete {number} ranges”) during this time, it means the GC process is running normally. Otherwise, contact [support@pingcap.com](mailto:support@pingcap.com) to resolve this issue.
+    3. If you find that the GC worker has been resolving locks (the last log is "start resolve locks") or deleting ranges (the last log is "start delete {number} ranges") during this time, it means the GC process is running normally. Otherwise, [get support](/support.md) from PingCAP or the community.
 
 ### Critical-level alerts
 
@@ -467,9 +482,9 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    1. Watch the Raft Propose monitor, and see whether the alerted TiKV node has a much higher Raft propose than other TiKV nodes. If so, it means that there are one or more hot spots on this TiKV. You need to check whether the hot spot scheduling can work properly.
-    2. Watch the Raft I/O monitor, and see whether the latency increases. If the latency is high, it means a bottleneck might exist in the disk. One feasible but unsafe solution is setting `sync-log` to `false`.
-    3. Watch the Raft Process monitor, and see whether the tick duration is high. If so, you need to add `raft-base-tick-interval = "2s"` under the `[raftstore]` configuration.
+    1. Watch the [**TiKV-Details** > **Raft Propose** dashboard](/grafana-tikv-dashboard.md#raft-propose), and see whether the alerted TiKV node has a much higher Raft propose than other TiKV nodes. If so, it means that there are one or more hot spots on this TiKV. You need to check whether the hot spot scheduling can work properly.
+    2. Watch the [**TiKV-Details** > **Raft IO** dashboard](/grafana-tikv-dashboard.md#raft-io), and see whether the latency increases. If the latency is high, it means a bottleneck might exist in the disk.
+    3. Watch the [**TiKV-Details** > **Raft process** dashboard](/grafana-tikv-dashboard.md#raft-process), and see whether the `tick duration` is high. If so, you need to set [`raftstore.raft-base-tick-interval`](/tikv-configuration-file.md#raft-base-tick-interval) to `"2s"`.
 
 #### `TiKV_write_stall`
 
@@ -523,8 +538,9 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    1. Check the pressure on Raftstore. See the solution in [`TiKV_channel_full_total`](#tikv_channel_full_total).
-    2. Check the pressure on the apply worker thread.
+    1. Watch the [**TiKV-Details** > **Raft propose** dashboard](/grafana-tikv-dashboard.md#raft-propose) and see whether the **99% Propose wait duration per server** metric of the alerted TiKV node is significantly higher than that of other TiKV nodes. If so, it indicates that hotspots exist on this TiKV node, and you need to check whether the hotspot scheduling works properly.
+    2. Watch the [**TiKV-Details** > **Raft IO** dashboard](/grafana-tikv-dashboard.md#raft-io) and see whether the latency increases. If the latency is high, it means a bottleneck might exist in the disk.
+    3. For further analysis of performance issues of the alerted TiKV node and tuning methods, see [Performance analysis and tuning](/performance-tuning-methods.md#storage-async-write-duration-store-duration-and-apply-duration).
 
 #### `TiKV_coprocessor_request_wait_seconds`
 
@@ -546,11 +562,13 @@ This section gives the alert rules for the TiKV component.
 
 * Alert rule:
 
-    `sum(rate(tikv_thread_cpu_seconds_total{name=~"raftstore_.*"}[1m])) by (instance, name) > 1.6`
+    `sum(rate(tikv_thread_cpu_seconds_total{name=~"raftstore_.*"}[1m])) by (instance) > 1.6`
 
 * Description:
 
-    The pressure on the Raftstore thread is too high.
+    This rule monitors CPU usage by Raftstore. If the value is high, it indicates pressure on Raftstore threads is heavy.
+
+    The alert threshold is 80% of the [`raftstore.store-pool-size`](/tikv-configuration-file.md#store-pool-size) value. `raftstore.store-pool-size` is 2 by default, so the alert threshold is 1.6.
 
 * Solution:
 
@@ -588,19 +606,19 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    1. View the scheduler command duration in the Scheduler-All monitor and see which command is most time-consuming;
-    2. View the scheduler scan details in the Scheduler-All monitor and see whether `total` and `process` match. If they differ a lot, there are many invalid scans. You can also see whether there is `over seek bound`. If there is too much, it indicates GC does not work in time;
+    1. Identify the most time-consuming command by viewing the scheduler command duration in the `Scheduler` and `Scheduler-${cmd}` (`${cmd}` is the write command to query) monitors;
+    2. Check the `total` and `process` values in the scheduler scan details of the `Scheduler` and `Scheduler-${cmd}` monitors and see whether `total` and `process` match.
     3. View the storage async snapshot/write duration in the Storage monitor and see whether the Raft operation is performed in time.
 
 #### `TiKV_thread_apply_worker_cpu_seconds`
 
 * Alert rule:
 
-    `sum(rate(tikv_thread_cpu_seconds_total{name="apply_worker"}[1m])) by (instance) > 1.8`
+    `max(rate(tikv_thread_cpu_seconds_total{name=~"apply_.*"}[1m])) by (instance) > 0.9`
 
 * Description:
 
-    The pressure on the apply Raft log thread is too high. It is often caused by a burst of writes.
+    The apply Raft log thread is under great pressure and is approaching or has exceeded its limit. This is often caused by a burst of writes.
 
 ### Warning-level alerts
 
@@ -633,7 +651,7 @@ This section gives the alert rules for the TiKV component.
 
 * Alert rule:
 
-    `histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type=’tick’}[1m])) by (le, instance, type)) > 2`
+    `histogram_quantile(0.999, sum(rate(tikv_raftstore_raft_process_duration_secs_bucket{type='tick'}[1m])) by (le, instance, type)) > 2`
 
 * Description:
 
@@ -662,7 +680,7 @@ This section gives the alert rules for the TiKV component.
 
 * Alert rule:
 
-    `histogram_quantile(0.99, sum(rate(tikv_scheduler_command_duration_seconds_bucket[1m])) by (le, instance, type)  / 1000) > 1`
+    `histogram_quantile(0.99, sum(rate(tikv_scheduler_command_duration_seconds_bucket[1m])) by (le, instance, type)) > 1`
 
 * Description:
 
@@ -685,34 +703,6 @@ This section gives the alert rules for the TiKV component.
 * Solution:
 
     Refer to [`TiKV_coprocessor_request_wait_seconds`](#tikv_coprocessor_request_wait_seconds).
-
-#### `TiKV_coprocessor_request_error`
-
-* Alert rule:
-
-    `increase(tikv_coprocessor_request_error{reason=!"meet_lock"}[10m]) > 100`
-
-* Description:
-
-    The request error of Coprocessor.
-
-* Solution:
-
-    The reasons for the Coprocessor error can be divided into three types: "lock", “outdated” and “full”. “outdated” indicates that the request has a timeout. It might be caused by a long queue time or a long time to handle a single request. “full” indicates that the request queue is full. It is possibly because the running request is time-consuming, which sends all new requests in the queue. You need to check whether the time-consuming query’s execution plan is correct.
-
-#### `TiKV_coprocessor_request_lock_error`
-
-* Alert rule:
-
-    `increase(tikv_coprocessor_request_error{reason="meet_lock"}[10m]) > 10000`
-
-* Description:
-
-    The lock requesting error of Coprocessor.
-
-* Solution:
-
-    The reasons for the Coprocessor error can be divided into three types: "lock", “outdated” and “full”. “lock” indicates that the read data is being written and you need to wait a while and read again (the automatic retry happens inside TiDB). If just a few errors of this kind occur, you can ignore them; but if there are a lot of them, you need to check whether there is a conflict between the write and the query.
 
 #### `TiKV_coprocessor_pending_request`
 
@@ -750,7 +740,7 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    Check which kind of tasks has a higher value. You can normally find a solution to the Coprocessor and apply worker tasks from other metrics.
+    Check which kind of tasks has a higher value from the `Worker pending tasks` metric in the [**TiKV-Details** > **Task** dashboard](/grafana-tikv-dashboard.md#task).
 
 #### `TiKV_low_space`
 
@@ -779,15 +769,15 @@ This section gives the alert rules for the TiKV component.
 
 * Solution:
 
-    The speed of splitting Regions is slower than the write speed. To alleviate this issue, you’d better update TiDB to a version that supports batch-split (>= 2.1.0-rc1). If it is not possible to update temporarily, you can use `pd-ctl operator add split-region <region_id> --policy=approximate` to manually split Regions.
+    The speed of splitting Regions is slower than the write speed. To alleviate this issue, you'd better update TiDB to a version that supports batch-split (>= 2.1.0-rc1). If it is not possible to update temporarily, you can use `pd-ctl operator add split-region <region_id> --policy=approximate` to manually split Regions.
 
 ## TiFlash alert rules
 
 For the detailed descriptions of TiFlash alert rules, see [TiFlash Alert Rules](/tiflash/tiflash-alert-rules.md).
 
-## TiDB Binlog alert rules
+## TiCDC Alert rules
 
-For the detailed descriptions of TiDB Binlog alert rules, see [TiDB Binlog monitoring document](/tidb-binlog/monitor-tidb-binlog-cluster.md#alert-rules).
+For the detailed descriptions of TiCDC alert rules, see [TiCDC Alert Rules](/ticdc/ticdc-alert-rules.md).
 
 ## Node_exporter host alert rules
 
@@ -924,7 +914,7 @@ This section gives the alert rules for the Node_exporter host.
 
 * Alert rule:
 
-    `((rate(node_disk_write_time_seconds_total{device=~".+"}[5m]) / rate(node_disk_writes_completed_total{device=~".+"}[5m])) or (irate(node_disk_write_time_seconds_total{device=~".+"}[5m]) / irate(node_disk_writes_completed_total{device=~".+"}[5m]))) * 1000 > 16`
+    `((rate(node_disk_write_time_seconds_total{device=~".+"}[5m]) / rate(node_disk_writes_completed_total{device=~".+"}[5m])) or (irate(node_disk_write_time_seconds_total{device=~".+"}[5m]) / irate(node_disk_writes_completed_total{device=~".+"}[5m])))> 16`
 
 * Description:
 
@@ -973,38 +963,6 @@ This section gives the alert rules for the Blackbox_exporter TCP, ICMP, and HTTP
     * Check whether the machine that provides the TiFlash service is down.
     * Check whether the TiFlash process exists.
     * Check whether the network between the monitoring machine and the TiFlash machine is normal.
-
-#### `Pump_server_is_down`
-
-* Alert rule:
-
-    `probe_success{group="pump"} == 0`
-
-* Description:
-
-    Failure to probe the pump service port.
-
-* Solution:
-
-    * Check whether the machine that provides the pump service is down.
-    * Check whether the pump process exists.
-    * Check whether the network between the monitoring machine and the pump machine is normal.
-
-#### `Drainer_server_is_down`
-
-* Alert rule:
-
-    `probe_success{group="drainer"} == 0`
-
-* Description:
-
-    Failure to probe the Drainer service port.
-
-* Solution:
-
-    * Check whether the machine that provides the Drainer service is down.
-    * Check whether the Drainer process exists.
-    * Check whether the network between the monitoring machine and the Drainer machine is normal.
 
 #### `TiKV_server_is_down`
 
@@ -1148,5 +1106,5 @@ This section gives the alert rules for the Blackbox_exporter TCP, ICMP, and HTTP
 
 * Solution:
 
-    * View the ping latency between the two nodes on the Grafana Blackbox Exporter dashboard to check whether it is too high.
-    * Check the tcp panel on the Grafana Node Exporter dashboard to check whether there is any packet loss.
+    * View the ping latency between the two nodes on the Grafana Blackbox Exporter page to check whether it is too high.
+    * Check the TCP panel on the Grafana Node Exporter page to check whether there is any packet loss.

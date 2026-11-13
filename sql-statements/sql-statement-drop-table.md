@@ -14,6 +14,9 @@ This statement drops a table from the currently selected database. An error is r
 DropTableStmt ::=
     'DROP' OptTemporary TableOrTables IfExists TableNameList RestrictOrCascadeOpt
 
+OptTemporary ::=
+    ( 'TEMPORARY' | ('GLOBAL' 'TEMPORARY') )?
+
 TableOrTables ::=
     'TABLE'
 |   'TABLES'
@@ -21,6 +24,14 @@ TableOrTables ::=
 TableNameList ::=
     TableName ( ',' TableName )*
 ```
+
+## Drop temporary tables
+
+You can use the following syntax to drop ordinary tables and temporary tables:
+
+- Use `DROP TEMPORARY TABLE` to drop local temporary tables.
+- Use `DROP GLOBAL TEMPORARY TABLE` to drop global temporary tables.
+- Use `DROP TABLE` to drop ordinary tables or temporary tables.
 
 ## Examples
 
@@ -33,8 +44,17 @@ Query OK, 0 rows affected (0.22 sec)
 
 mysql> DROP TABLE table_not_exists;
 ERROR 1051 (42S02): Unknown table 'test.table_not_exists'
+
 mysql> DROP TABLE IF EXISTS table_not_exists;
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected, 1 warning (0.01 sec)
+
+mysql> SHOW WARNINGS;
++-------+------+---------------------------------------+
+| Level | Code | Message                               |
++-------+------+---------------------------------------+
+| Note  | 1051 | Unknown table 'test.table_not_exists' |
++-------+------+---------------------------------------+
+1 row in set (0.01 sec)
 
 mysql> CREATE VIEW v1 AS SELECT 1;
 Query OK, 0 rows affected (0.10 sec)
@@ -45,8 +65,7 @@ Query OK, 0 rows affected (0.23 sec)
 
 ## MySQL compatibility
 
-* Dropping a table with `IF EXISTS` does not return a warning when attempting to drop a table that does not exist. [Issue #7867](https://github.com/pingcap/tidb/issues/7867)
-* Currently `RESTRICT` and `CASCADE` are only supported syntactically.
+Currently, `RESTRICT` and `CASCADE` are only supported syntactically.
 
 ## See also
 

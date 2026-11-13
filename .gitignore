@@ -4,10 +4,22 @@
 
 # IntelliJ project files
 .idea/
+.vscode/
 *.iml
+uml/
 out
 gen
 .DS_Store
 *.swp
-
 /node_modules/
+tmp/
+.lycheecache
+
+# Local credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+service-account*.json

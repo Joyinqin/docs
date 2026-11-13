@@ -1,6 +1,7 @@
 ---
 title: TiDB 2.1.9 Release Notes
 aliases: ['/docs/dev/releases/release-2.1.9/','/docs/dev/releases/2.1.9/']
+summary: TiDB 2.1.9 was released on May 6, 2019. It includes various bug fixes and improvements, such as fixing compatibility issues, privilege check problems, and wrong result issues. The release also includes improvements to slow query logs and support for controlling the number of rows returned by operators. Additionally, there are updates to PD, TiKV, TiDB Binlog, TiDB Lightning, and sync-diff-inspector. TiDB Ansible has also been updated with documentation links and parameter removal.
 ---
 
 # TiDB 2.1.9 Release Notes
@@ -52,7 +53,7 @@ TiDB Ansible version: 2.1.9
 
 - TiDB Binlog
     - Fix the issue that data replication is interrupted because data in the unsigned int type of primary key column are minus numbers [#574](https://github.com/pingcap/tidb-binlog/pull/574)
-    - Remove the compression option when the downstream is `pb` and change the downstream name from `pb` to `file` [#597](https://github.com/pingcap/tidb-binlog/pull/575)
+    - Remove the compression option when the downstream is `pb` and change the downstream name from `pb` to `file` [#575](https://github.com/pingcap/tidb-binlog/pull/575)
     - Fix the bug that Reparo introduced in 2.1.7 generates wrong `UPDATE` statements [#576](https://github.com/pingcap/tidb-binlog/pull/576)
 - TiDB Lightning
     - Fix the bug that the bit type of column data is incorrectly parsed by the parser [#164](https://github.com/pingcap/tidb-lightning/pull/164)

@@ -8,11 +8,33 @@ aliases: ['/docs/dev/auto-increment/']
 
 This document introduces the `AUTO_INCREMENT` column attribute, including its concept, implementation principles, auto-increment related features, and restrictions.
 
-## Concept 
+<CustomContent platform="tidb">
+
+> **Note:**
+>
+> The `AUTO_INCREMENT` attribute might cause hotspot in production environments. See [Troubleshoot HotSpot Issues](/troubleshoot-hot-spot-issues.md) for details. It is recommended to use [`AUTO_RANDOM`](/auto-random.md) instead.
+
+</CustomContent>
+
+<CustomContent platform="tidb-cloud">
+
+> **Note:**
+>
+> The `AUTO_INCREMENT` attribute might cause hotspot in production environments. See [Troubleshoot HotSpot Issues](https://docs.pingcap.com/tidb/stable/troubleshoot-hot-spot-issues#handle-auto-increment-primary-key-hotspot-tables-using-auto_random) for details. It is recommended to use [`AUTO_RANDOM`](/auto-random.md) instead.
+
+</CustomContent>
+
+You can also use the `AUTO_INCREMENT` parameter in the [`CREATE TABLE`](/sql-statements/sql-statement-create-table.md) statement to specify the initial value of the increment field.
+
+## Concept
 
 `AUTO_INCREMENT` is a column attribute that is used to automatically fill in default column values. When the `INSERT` statement does not specify values for the `AUTO_INCREMENT` column, the system automatically assigns values to this column.
 
 For performance reasons, `AUTO_INCREMENT` numbers are allocated in a batch of values (30 thousand by default) to each TiDB server. This means that while `AUTO_INCREMENT` numbers are guaranteed to be unique, values assigned to an `INSERT` statement will only be monotonic on a per TiDB server basis.
+
+> **Note:**
+>
+> If you want the `AUTO_INCREMENT` numbers to be monotonic on all TiDB servers and your TiDB version is v6.5.0 or later, it is recommended to enable the [MySQL compatibility mode](#mysql-compatibility-mode).
 
 The following is a basic example of `AUTO_INCREMENT`:
 
@@ -129,11 +151,56 @@ Records: 3  Duplicates: 0  Warnings: 0
 3 rows in set (0.00 sec)
 ```
 
+Monotonicity is not the same guarantee as consecutive. Consider the following example:
+
+{{< copyable "sql" >}}
+
+```sql
+CREATE TABLE t (id INT NOT NULL PRIMARY KEY auto_increment, a VARCHAR(10), cnt INT NOT NULL DEFAULT 1, UNIQUE KEY (a));
+INSERT INTO t (a) VALUES ('A'), ('B');
+SELECT * FROM t;
+INSERT INTO t (a) VALUES ('A'), ('C') ON DUPLICATE KEY UPDATE cnt = cnt + 1;
+SELECT * FROM t;
+```
+
+```sql
+Query OK, 0 rows affected (0.00 sec)
+
+Query OK, 2 rows affected (0.00 sec)
+Records: 2  Duplicates: 0  Warnings: 0
+
++----+------+-----+
+| id | a    | cnt |
++----+------+-----+
+|  1 | A    |   1 |
+|  2 | B    |   1 |
++----+------+-----+
+2 rows in set (0.00 sec)
+
+Query OK, 3 rows affected (0.00 sec)
+Records: 2  Duplicates: 1  Warnings: 0
+
++----+------+-----+
+| id | a    | cnt |
++----+------+-----+
+|  1 | A    |   2 |
+|  2 | B    |   1 |
+|  4 | C    |   1 |
++----+------+-----+
+3 rows in set (0.00 sec)
+```
+
+In this example, the `AUTO_INCREMENT` value of `3` is allocated for the `INSERT` of the key `A` in `INSERT INTO t (a) VALUES ('A'), ('C') ON DUPLICATE KEY UPDATE cnt = cnt + 1;` but never used because this `INSERT` statement contains a duplicate key `A`. This leads to a gap where the sequence is non-consecutive. This behavior is considered legal, even though it differs from MySQL. MySQL will also have gaps in the sequence in other scenarios such as transactions being aborted and rolled back.
+
+## AUTO_ID_CACHE
+
 The `AUTO_INCREMENT` sequence might appear to _jump_ dramatically if an `INSERT` operation is performed against a different TiDB server. This is caused by the fact that each server has its own cache of `AUTO_INCREMENT` values:
 
 {{< copyable "sql" >}}
 
 ```sql
+CREATE TABLE t (a int PRIMARY KEY AUTO_INCREMENT, b timestamp NOT NULL DEFAULT NOW());
+INSERT INTO t (a) VALUES (NULL), (NULL), (NULL);
 INSERT INTO t (a) VALUES (NULL);
 SELECT * FROM t;
 ```
@@ -237,61 +304,181 @@ After the value `2030000` is inserted, the next value is `2060001`. This jump in
 In earlier versions of TiDB, the cache size of the auto-increment ID was transparent to users. Starting from v3.0.14, v3.1.2, and v4.0.rc-2, TiDB has introduced the `AUTO_ID_CACHE` table option to allow users to set the cache size for allocating the auto-increment ID.
 
 ```sql
-mysql> CREATE TABLE t(a int AUTO_INCREMENT key) AUTO_ID_CACHE 100;
+CREATE TABLE t(a int AUTO_INCREMENT key) AUTO_ID_CACHE 100;
 Query OK, 0 rows affected (0.02 sec)
 
-mysql> INSERT INTO t values();
+INSERT INTO t values();
 Query OK, 1 row affected (0.00 sec)
-Records: 1  Duplicates: 0  Warnings: 0
 
-mysql> SELECT * FROM t;
+SELECT * FROM t;
 +---+
 | a |
 +---+
 | 1 |
 +---+
 1 row in set (0.01 sec)
-```
 
-At this time, if you invalidate the auto-increment cache of this column and redo the implicit insertion, the result is as follows:
-
-```sql
-mysql> DELETE FROM t;
-Query OK, 1 row affected (0.01 sec)
-
-mysql> RENAME TABLE t to t1;
-Query OK, 0 rows affected (0.01 sec)
-
-mysql> INSERT INTO t1 values()
-Query OK, 1 row affected (0.00 sec)
-
-mysql> SELECT * FROM t;
-+-----+
-| a   |
-+-----+
-| 101 |
-+-----+
+SHOW CREATE TABLE t;
++-------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Table | Create Table                                                                                                                                                                                                                             |
++-------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| t     | CREATE TABLE `t` (
+  `a` int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`a`) /*T![clustered_index] CLUSTERED */
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=101 /*T![auto_id_cache] AUTO_ID_CACHE=100 */ |
++-------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 1 row in set (0.00 sec)
 ```
 
-The re-assigned value is `101`. This shows that the size of cache for allocating the auto-increment ID is `100`.
+At this time, if you restart TiDB, the auto-increment ID cache will be lost, and new insert operations will allocate IDs starting from a higher value beyond the previously cached range.
 
-In addition, when the length of consecutive IDs in a batch `INSERT` statement exceeds the length of `AUTO_ID_CACHE`, TiDB increases the cache size accordingly to ensure that the statement can be inserted properly.
+```sql
+INSERT INTO t VALUES();
+Query OK, 1 row affected (0.00 sec)
+
+SELECT * FROM t;
++-----+
+| a   |
++-----+
+|   1 |
+| 101 |
++-----+
+2 rows in set (0.01 sec)
+```
+
+The newly allocated value is `101`. This shows that the size of cache for allocating auto-increment IDs is `100`.
+
+In addition, when the length of consecutive IDs in a batch `INSERT` statement exceeds the length of `AUTO_ID_CACHE`, TiDB increases the cache size accordingly to ensure that the statement can insert data properly.
+
+### Clear the auto-increment ID cache
+
+In some scenarios, you might need to clear the auto-increment ID cache to ensure data consistency. For example:
+
+<CustomContent platform="tidb">
+
+- In the scenario of incremental replication using [Data Migration (DM)](/dm/dm-overview.md), once the replication is complete, data writing to the downstream TiDB switches from DM to your application's write operations. Meanwhile, the ID writing mode of the auto-increment column usually switches from explicit insertion to implicit allocation.
+- After TiDB Lightning completes the data import, it automatically clears the auto-increment ID cache. However, TiCDC does not automatically clear the cache after incremental data synchronization. Therefore, you need to manually clear the auto-increment ID cache in the downstream cluster after stopping TiCDC, and before performing the failover.
+
+</CustomContent>
+<CustomContent platform="tidb-cloud">
+
+- In the scenario of incremental replication using the [Data Migration](/tidb-cloud/migrate-incremental-data-from-mysql-using-data-migration.md) feature, once the replication is complete, data writing to the downstream TiDB switches from DM to your application's write operations. Meanwhile, the ID writing mode of the auto-increment column usually switches from explicit insertion to implicit allocation.
+- After TiDB Lightning completes the data import, it automatically clears the auto-increment ID cache. However, TiCDC does not automatically clear the cache after incremental data synchronization. Therefore, you need to manually clear the auto-increment ID cache in the downstream cluster after stopping TiCDC, and before performing the failover.
+
+</CustomContent>
+
+- When your application involves both explicit ID insertion and implicit ID allocation, you need to clear the auto-increment ID cache to avoid conflicts between future implicitly allocated IDs and previously explicitly inserted IDs, which could result in primary key conflict errors. For more information, see [Uniqueness](/auto-increment.md#uniqueness).
+
+To clear the auto-increment ID cache on all TiDB nodes in the cluster, you can execute the `ALTER TABLE` statement with `AUTO_INCREMENT = 0`. For example:
+
+```sql
+CREATE TABLE t(a int AUTO_INCREMENT key) AUTO_ID_CACHE 100;
+Query OK, 0 rows affected (0.02 sec)
+
+INSERT INTO t VALUES();
+Query OK, 1 row affected (0.02 sec)
+
+INSERT INTO t VALUES(50);
+Query OK, 1 row affected (0.00 sec)
+
+SELECT * FROM t;
++----+
+| a  |
++----+
+|  1 |
+| 50 |
++----+
+2 rows in set (0.01 sec)
+```
+
+```sql
+ALTER TABLE t AUTO_INCREMENT = 0;
+Query OK, 0 rows affected, 1 warning (0.07 sec)
+
+SHOW WARNINGS;
++---------+------+-------------------------------------------------------------------------+
+| Level   | Code | Message                                                                 |
++---------+------+-------------------------------------------------------------------------+
+| Warning | 1105 | Can't reset AUTO_INCREMENT to 0 without FORCE option, using 101 instead |
++---------+------+-------------------------------------------------------------------------+
+1 row in set (0.01 sec)
+
+INSERT INTO t VALUES();
+Query OK, 1 row affected (0.02 sec)
+
+SELECT * FROM t;
++-----+
+| a   |
++-----+
+|   1 |
+|  50 |
+| 101 |
++-----+
+3 rows in set (0.01 sec)
+```
 
 ### Auto-increment step size and offset
 
 Starting from v3.0.9 and v4.0.0-rc.1, similar to the behavior of MySQL, the value implicitly assigned to the auto-increment column is controlled by the `@@auto_increment_increment` and `@@auto_increment_offset` session variables.
 
-The value (ID) implicitly assigned to auto-increment columns satisfies the following equation: 
+The value (ID) implicitly assigned to auto-increment columns satisfies the following equation:
 
 `(ID - auto_increment_offset) % auto_increment_increment == 0`
+
+## MySQL compatibility mode
+
+TiDB provides a MySQL-compatible mode for auto-increment columns that ensures strictly increasing IDs with minimal gaps. To enable this mode, set `AUTO_ID_CACHE` to `1` when creating a table:
+
+```sql
+CREATE TABLE t(a int AUTO_INCREMENT key) AUTO_ID_CACHE 1;
+```
+
+When `AUTO_ID_CACHE` is set to `1`, IDs are strictly increasing across all TiDB instances, each ID is guaranteed to be unique, and gaps between IDs are minimal compared to the default cache mode (`AUTO_ID_CACHE 0` with 30000 cached values).
+
+For example, with `AUTO_ID_CACHE 1`, you might see a sequence as follows:
+
+```sql
+INSERT INTO t VALUES (); -- Returns ID 1
+INSERT INTO t VALUES (); -- Returns ID 2
+INSERT INTO t VALUES (); -- Returns ID 3
+-- After failover
+INSERT INTO t VALUES (); -- Might return ID 5
+```
+
+In contrast, with the default cache (`AUTO_ID_CACHE 0`), larger gaps can occur:
+
+```sql
+INSERT INTO t VALUES (); -- Returns ID 1
+INSERT INTO t VALUES (); -- Returns ID 2
+-- New TiDB instance allocates next batch
+INSERT INTO t VALUES (); -- Returns ID 30001
+```
+
+While IDs are always increasing and without significant gaps like those seen with `AUTO_ID_CACHE 0`, small gaps in the sequence might still occur in the following scenarios. These gaps are necessary to maintain both uniqueness and the strictly increasing property of the IDs.
+
+- During failover when the primary instance exits or crashes
+
+    After you enable the MySQL compatibility mode, the allocated IDs are **unique** and **monotonically increasing**, and the behavior is almost the same as MySQL. Even when accessing across multiple TiDB instances, ID monotonicity is maintained. However, if the primary instance of the centralized service crashes, a few IDs might become non-continuous. This occurs because the secondary instance discards some IDs allocated by the primary instance during failover to ensure ID uniqueness.
+
+- During rolling upgrades of TiDB nodes
+- During normal concurrent transactions (similar to MySQL)
+
+> **Note:**
+>
+> The behavior and performance of `AUTO_ID_CACHE 1` has evolved across TiDB versions:
+>
+> - Before v6.4.0, each ID allocation requires a TiKV transaction, which affects performance.
+> - In v6.4.0, TiDB introduces a centralized allocating service that performs ID allocation as an in-memory operation, significantly improving performance.
+> - Starting from v8.1.0, TiDB removes the automatic `forceRebase` operation during primary node exits to enable faster restarts. While this might result in additional non-consecutive IDs during failover, it prevents potential write blocking when many tables use `AUTO_ID_CACHE 1`.
 
 ## Restrictions
 
 Currently, `AUTO_INCREMENT` has the following restrictions when used in TiDB:
 
-- It must be defined on the column of the primary key or unique index.
+- For TiDB v6.6.0 and earlier versions, the defined column must be either primary key or index prefixes.
 - It must be defined on the column of `INTEGER`, `FLOAT`, or `DOUBLE` type.
 - It cannot be specified on the same column with the `DEFAULT` column value.
-- `ALTER TABLE` cannot be used to add the `AUTO_INCREMENT` attribute.
+- `ALTER TABLE` cannot be used to add or modify columns with the `AUTO_INCREMENT` attribute, including using `ALTER TABLE ... MODIFY/CHANGE COLUMN` to add the `AUTO_INCREMENT` attribute to an existing column, or using `ALTER TABLE ... ADD COLUMN` to add a column with the `AUTO_INCREMENT` attribute.
 - `ALTER TABLE` can be used to remove the `AUTO_INCREMENT` attribute. However, starting from v2.1.18 and v3.0.4, TiDB uses the session variable `@@tidb_allow_remove_auto_inc` to control whether `ALTER TABLE MODIFY` or `ALTER TABLE CHANGE` can be used to remove the `AUTO_INCREMENT` attribute of a column. By default, you cannot use `ALTER TABLE MODIFY` or `ALTER TABLE CHANGE` to remove the `AUTO_INCREMENT` attribute.
+- `ALTER TABLE` requires the `FORCE` option to set the `AUTO_INCREMENT` value to a smaller value.
+- Setting the `AUTO_INCREMENT` to a value smaller than `MAX(<auto_increment_column>)` leads to duplicate keys because pre-existing values are not skipped.

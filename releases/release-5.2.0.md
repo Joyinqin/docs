@@ -1,5 +1,6 @@
 ---
 title: TiDB 5.2 Release Notes
+summary: TiDB 5.2.0 introduces new features and improvements, including support for expression indexes, Lock View GA, TiFlash I/O traffic limit, and more. Compatibility changes include new system variables and configuration file parameters. The release also includes bug fixes and feature enhancements for TiDB, TiKV, TiFlash, and tools like TiCDC, BR, Lightning, and Dumpling.
 ---
 
 # TiDB 5.2 Release Notes
@@ -20,13 +21,13 @@ In v5.2, the key new features and improvements are as follows:
 - Add the TiFlash I/O traffic limit feature to improve the stability of read and write for TiFlash
 - TiKV introduces a new flow control mechanism to replace the previous RocksDB write stall mechanism to improve the stability of TiKV flow control
 - Simplify the operation and maintenance of Data Migration (DM) to reduce the management cost.
-- TiCDC supports HTTP protocol OpenAPI to manage TiCDC tasks. It provides a more user-friendly operation method for both Kubernetes and on-premises environments. (Experimental feature)
+- TiCDC supports HTTP protocol OpenAPI to manage TiCDC tasks. It provides a more user-friendly operation method for both Kubernetes and self-hosted environments. (Experimental feature)
 
 ## Compatibility changes
 
 > **Note:**
 >
-> When upgrading from an earlier TiDB version to v5.2, if you want to know the compatibility change notes of all intermediate versions, you can check the [Release Note](/releases/release-notes.md) for the corresponding version.
+> When upgrading from an earlier TiDB version to v5.2, if you want to know the compatibility change notes of all intermediate versions, you can check the [Release Note](/releases/_index.md) for the corresponding version.
 
 ### System variables
 
@@ -45,7 +46,7 @@ In v5.2, the key new features and improvements are as follows:
 | :---------- | :----------- | :----------- | :----------- |
 | TiDB configuration file  | [`pessimistic-txn.deadlock-history-collect-retryable`](/tidb-configuration-file.md#deadlock-history-collect-retryable) |  Newly added  | Controls whether the [`INFORMATION\_SCHEMA.DEADLOCKS`](/information-schema/information-schema-deadlocks.md) table collects retryable deadlock error messages or not.  |
 | TiDB configuration file  | [`security.auto-tls`](/tidb-configuration-file.md#auto-tls) |  Newly added  | Determines whether to automatically generate the TLS certificates on startup. The default value is `false`.  |
-| TiDB configuration file  | [`stmt-summary.max-stmt-count`](/tidb-configuration-file.md#max-stmt-count) | Modified | Indicates the maximum number of SQL categories allowed to be saved in the statement summary tables. The default value is changed from `200` to `3000`.  |
+| TiDB configuration file  | `stmt-summary.max-stmt-count` | Modified | Indicates the maximum number of SQL categories allowed to be saved in the statement summary tables. The default value is changed from `200` to `3000`.  |
 | TiDB configuration file  | `experimental.allow-expression-index`  | Deprecated | The `allow-expression-index` configuration in the TiDB configuration file is deprecated.  |
 | TiKV configuration file  | [`raftstore.cmd-batch`](/tikv-configuration-file.md#cmd-batch)  |  Newly added  | Controls whether to enable batch processing of the requests. When it is enabled, the write performance is significantly improved. The default value is `true`.  |
 | TiKV configuration file  | [`raftstore.inspect-interval`](/tikv-configuration-file.md#inspect-interval)  |  Newly added  | At a certain interval, TiKV inspects the latency of the Raftstore component. This configuration item specifies the interval of the inspection. If the latency exceeds this value, this inspection is marked as timeout. The default value is `500ms`.  |
@@ -61,7 +62,7 @@ In v5.2, the key new features and improvements are as follows:
 
 - Before the upgrade, check whether the value of the [`tidb_evolve_plan_baselines`](/system-variables.md#tidb_evolve_plan_baselines-new-in-v40) system variable is `ON`. If the value is `ON`, set it to `OFF`; otherwise, the upgrade will fail.
 - For TiDB clusters upgraded from v4.0 to v5.2, the default value of [`tidb_multi_statement_mode`](/system-variables.md#tidb_multi_statement_mode-new-in-v4011) changes from `WARN` to `OFF`.
-- Before the upgrade, check the value of the TiDB configuration [`feedback-probability`](/tidb-configuration-file.md#feedback-probability). If the value is not `0`, the "panic in the recoverable goroutine" error will occur after the upgrade, but this error does not affect the upgrade.
+- Before the upgrade, check the value of the TiDB configuration [`feedback-probability`](https://docs-archive.pingcap.com/tidb/v5.2/tidb-configuration-file#feedback-probability). If the value is not `0`, the "panic in the recoverable goroutine" error will occur after the upgrade, but this error does not affect the upgrade.
 - TiDB is now compatible with MySQL 5.7's noop variable `innodb_default_row_format`. Setting this variable has no effect. [#23541](https://github.com/pingcap/tidb/issues/23541)
 - Starting from TiDB 5.2, to improve system security, it is recommended (but not mandatory) to encrypt the transport layer for connections from clients. TiDB provides the Auto TLS feature to automatically configure and enable encryption in TiDB. To use the Auto TLS feature, before the TiDB upgrade, set [`security.auto-tls`](/tidb-configuration-file.md#auto-tls) in the TiDB configuration file to `true`.
 - Support the `caching_sha2_password` authentication method to make migration from MySQL 8.0 easier and to improve security.
@@ -111,7 +112,7 @@ In v5.2, the key new features and improvements are as follows:
     In v5.2, the following enhancements are made to Lock View:
 
     - In addition to the SQL digest column in the Lock View-related tables, add a column to these tables that shows the corresponding normalized SQL text. You do not have to manually query the statement corresponding to a SQL digest.
-    - Add the `TIDB_DECODE_SQL_DIGESTS` function to query the normalized SQL statements (a form without formats and arguments) corresponding to a set of SQL digests in the cluster. This simplifies the operation of querying the statements that have been historically executed by a transaction.
+    - Add the `TIDB_DECODE_SQL_DIGESTS` function to query the normalized SQL statements (in which literal values are replaced with placeholders such as `?` or `...`) corresponding to a set of SQL digests in the cluster. This simplifies the operation of querying the statements that have been historically executed by a transaction.
     - Add a column in the `DATA_LOCK_WAITS` and `DEADLOCKS` system tables to show the table name, row ID, index value, and other key information interpreted from a key. This simplifies the operations such as locating the table to which a key belongs and interpreting the key information.
     - Support collecting the information of retryable deadlock errors in the `DEADLOCKS` table, which makes it easier to troubleshoot issues caused by such errors. The error collection is disabled by default and can be enabled using the `pessimistic-txn.deadlock-history-collect-retryable` configuration.
     - Support distinguishing query-executing transactions from idle transactions on the `TIDB_TRX` system table. The `Normal` state is now divided into `Running` and `Idle` states.
@@ -165,9 +166,9 @@ In v5.2, the key new features and improvements are as follows:
 
 ### TiDB data share subscription
 
-TiCDC supports using the HTTP protocol (OpenAPI) to manage TiCDC tasks, which is a more user-friendly operation method for both Kubernetes and on-premises environments. (Experimental feature)
+TiCDC supports using the HTTP protocol (OpenAPI) to manage TiCDC tasks, which is a more user-friendly operation method for both Kubernetes and self-hosted environments. (Experimental feature)
 
-[#2411](https://github.com/pingcap/ticdc/issues/2411)
+[#2411](https://github.com/pingcap/tiflow/issues/2411)
 
 ### Deployment and operations
 
@@ -179,9 +180,9 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
 
     + TiCDC
 
-        - Add the binary MQ format designed for TiDB. It is more compact than the open protocols based on JSON [#1621](https://github.com/pingcap/ticdc/pull/1621)
-        - Remove support for file sorter [#2114](https://github.com/pingcap/ticdc/pull/2114)
-        - Support log rotation configurations [#2182](https://github.com/pingcap/ticdc/pull/2182)
+        - Add the binary MQ format designed for TiDB. It is more compact than the open protocols based on JSON [#1621](https://github.com/pingcap/tiflow/pull/1621)
+        - Remove support for file sorter [#2114](https://github.com/pingcap/tiflow/pull/2114)
+        - Support log rotation configurations [#2182](https://github.com/pingcap/tiflow/pull/2182)
 
     + TiDB Lightning
 
@@ -210,7 +211,7 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
     - Support completing the garbage collection automatically for the bindings in the "deleted" status [#26206](https://github.com/pingcap/tidb/pull/26206)
     - Support showing whether a binding is used for query optimization in the result of `EXPLAIN VERBOSE` [#26930](https://github.com/pingcap/tidb/pull/26930)
     - Add a new status variation `last_plan_binding_update_time` to view the timestamp corresponding to the binding cache in the current TiDB instance [#26340](https://github.com/pingcap/tidb/pull/26340)
-    - Support reporting an error when starting binding evolution or running `admin evolve bindings` to ban the baseline evolution (currently disabled in the on-premises TiDB version because it is an experimental feature) affecting other features [#26333](https://github.com/pingcap/tidb/pull/26333)
+    - Support reporting an error when starting binding evolution or running `admin evolve bindings` to ban the baseline evolution (currently disabled in the TiDB Self-Managed version because it is an experimental feature) affecting other features [#26333](https://github.com/pingcap/tidb/pull/26333)
 
 + PD
 
@@ -234,11 +235,11 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
 
     + TiCDC
 
-        - Add the concurrency limit to the incremental scan of kv client [#1899](https://github.com/pingcap/ticdc/pull/1899)
-        - TiCDC can always pull the old value internally [#2271](https://github.com/pingcap/ticdc/pull/2271)
-        - TiCDC can fail and exit fast when unrecoverable DML errors occur [#1928](https://github.com/pingcap/ticdc/pull/1928)
-        - `resolve lock` cannot be run immediately after a Region is initialized [#2235](https://github.com/pingcap/ticdc/pull/2235)
-        - Optimize workerpool to reduce the number of goroutines under high concurrency [#2201](https://github.com/pingcap/ticdc/pull/2201)
+        - Add the concurrency limit to the incremental scan of kv client [#1899](https://github.com/pingcap/tiflow/pull/1899)
+        - TiCDC can always pull the old value internally [#2271](https://github.com/pingcap/tiflow/pull/2271)
+        - TiCDC can fail and exit fast when unrecoverable DML errors occur [#1928](https://github.com/pingcap/tiflow/pull/1928)
+        - `resolve lock` cannot be run immediately after a Region is initialized [#2235](https://github.com/pingcap/tiflow/pull/2235)
+        - Optimize workerpool to reduce the number of goroutines under high concurrency [#2201](https://github.com/pingcap/tiflow/pull/2201)
 
     + Dumpling
 
@@ -287,7 +288,7 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
     - Fix a bug that TiFlash adds wrong padding for non-binary characters in the `CAST` function
     - Fix the issue of incorrect results when handling aggregation queries with complex `GROUP BY` columns
     - Fix the TiFlash panic issue that occurs under heavy write pressure
-    - Fix the panic that occurs when the right jon key is not nullable and the left join key is nullable
+    - Fix the panic that occurs when the right join key is not nullable and the left join key is nullable
     - Fix the potential issue that the `read-index` requests take a long time
     - Fix the panic issue that occurs when the read load is heavy
     - Fix the panic issue that might occur when the `Date_Format` function is called with the `STRING` type argument and `NULL` values
@@ -296,15 +297,15 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
 
     + TiCDC
 
-        - Fix a bug that TiCDC owner exits abnormally when refreshing the checkpoint [#1902](https://github.com/pingcap/ticdc/issues/1902)
-        - Fix a bug that changefeed fails immediately after its successful creation [#2113](https://github.com/pingcap/ticdc/issues/2113)
-        - Fix a bug that changefeed fails due to the invalid format of rules filter [#1625](https://github.com/pingcap/ticdc/issues/1625)
-        - Fix the potential DDL loss issue when the TiCDC owner panics [#1260](https://github.com/pingcap/ticdc/issues/1260)
-        - Fix the CLI compatibility issue with 4.0.x clusters on the default sort-engine option [#2373](https://github.com/pingcap/ticdc/issues/2373)
-        - Fix a bug that changefeed might be reset unexpectedly when TiCDC gets the `ErrSchemaStorageTableMiss` error [#2422](https://github.com/pingcap/ticdc/issues/2422)
-        - Fix a bug that changefeed cannot be removed when TiCDC gets the `ErrGCTTLExceeded` error [#2391](https://github.com/pingcap/ticdc/issues/2391)
-        - Fix a bug that TiCDC fails to synchronize large tables to cdclog [#1259](https://github.com/pingcap/ticdc/issues/1259) [#2424](https://github.com/pingcap/ticdc/issues/2424)
-        - Fix a bug that multiple processors might write data to the same table when TiCDC is rescheduling the table [#2230](https://github.com/pingcap/ticdc/issues/2230)
+        - Fix a bug that TiCDC owner exits abnormally when refreshing the checkpoint [#1902](https://github.com/pingcap/tiflow/issues/1902)
+        - Fix a bug that changefeed fails immediately after its successful creation [#2113](https://github.com/pingcap/tiflow/issues/2113)
+        - Fix a bug that changefeed fails due to the invalid format of rules filter [#1625](https://github.com/pingcap/tiflow/issues/1625)
+        - Fix the potential DDL loss issue when the TiCDC owner panics [#1260](https://github.com/pingcap/tiflow/issues/1260)
+        - Fix the CLI compatibility issue with 4.0.x clusters on the default sort-engine option [#2373](https://github.com/pingcap/tiflow/issues/2373)
+        - Fix a bug that changefeed might be reset unexpectedly when TiCDC gets the `ErrSchemaStorageTableMiss` error [#2422](https://github.com/pingcap/tiflow/issues/2422)
+        - Fix a bug that changefeed cannot be removed when TiCDC gets the `ErrGCTTLExceeded` error [#2391](https://github.com/pingcap/tiflow/issues/2391)
+        - Fix a bug that TiCDC fails to synchronize large tables to cdclog [#1259](https://github.com/pingcap/tiflow/issues/1259) [#2424](https://github.com/pingcap/tiflow/issues/2424)
+        - Fix a bug that multiple processors might write data to the same table when TiCDC is rescheduling the table [#2230](https://github.com/pingcap/tiflow/issues/2230)
 
     + Backup & Restore (BR)
 
@@ -317,7 +318,7 @@ Support running the `tiup playground` command on Mac computers with Apple M1 chi
         - Fix a bug that TiDB Lightning reports the "Error 9007: Write conflict" error when restoring table schemas [#1290](https://github.com/pingcap/br/issues/1290)
         - Fix a bug that TiDB Lightning fails to import data due to the overflow of int handle [#1291](https://github.com/pingcap/br/issues/1291)
         - Fix a bug that TiDB Lightning might get a checksum mismatching error due to data loss in the local backend mode [#1403](https://github.com/pingcap/br/issues/1403)
-        - Fix the Lighting incompatibility issue with clustered index when TiDB Lightning is restoring table schemas [#1362](https://github.com/pingcap/br/issues/1362)
+        - Fix the Lightning incompatibility issue with clustered index when TiDB Lightning is restoring table schemas [#1362](https://github.com/pingcap/br/issues/1362)
 
     + Dumpling
 

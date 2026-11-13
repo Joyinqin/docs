@@ -1,5 +1,6 @@
 ---
 title: TiDB 5.0.3 Release Notes
+summary: TiDB 5.0.3 was released on July 2, 2021. The release includes compatibility changes, feature enhancements, improvements, bug fixes, and updates for TiDB, TiKV, PD, TiFlash, and Tools like TiCDC, Backup & Restore (BR), and TiDB Lightning. Some notable changes include support for pushing down operators and functions to TiFlash, memory consumption limits for TiCDC, and bug fixes for various issues in TiDB, TiKV, PD, and TiFlash.
 ---
 
 # TiDB 5.0.3 Release Notes
@@ -21,9 +22,9 @@ TiDB version: 5.0.3
 
     + TiCDC
 
-        - Add an HTTP API to get the changefeed information and the health information of the node [#1955](https://github.com/pingcap/ticdc/pull/1955)
-        - Add the SASL/SCRAM support for the kafka sink [#1942](https://github.com/pingcap/ticdc/pull/1942)
-        - Make TiCDC support `--data-dir` at the server level [#2070](https://github.com/pingcap/ticdc/pull/2070)
+        - Add an HTTP API to get the changefeed information and the health information of the node [#1955](https://github.com/pingcap/tiflow/pull/1955)
+        - Add the SASL/SCRAM support for the kafka sink [#1942](https://github.com/pingcap/tiflow/pull/1942)
+        - Make TiCDC support `--data-dir` at the server level [#2070](https://github.com/pingcap/tiflow/pull/2070)
 
 ## Improvements
 
@@ -68,7 +69,7 @@ TiDB version: 5.0.3
 
     + TiCDC
 
-        - Refine gRPC's reconnection logic and increase the KV client's throughput [#1586](https://github.com/pingcap/ticdc/issues/1586) [#1501](https://github.com/pingcap/ticdc/issues/1501#issuecomment-820027078) [#1682](https://github.com/pingcap/ticdc/pull/1682) [#1393](https://github.com/pingcap/ticdc/issues/1393) [#1847](https://github.com/pingcap/ticdc/pull/1847) [#1905](https://github.com/pingcap/ticdc/issues/1905) [#1904](https://github.com/pingcap/ticdc/issues/1904)
+        - Refine gRPC's reconnection logic and increase the KV client's throughput [#1586](https://github.com/pingcap/tiflow/issues/1586) [#1501](https://github.com/pingcap/tiflow/issues/1501#issuecomment-820027078) [#1682](https://github.com/pingcap/tiflow/pull/1682) [#1393](https://github.com/pingcap/tiflow/issues/1393) [#1847](https://github.com/pingcap/tiflow/pull/1847) [#1905](https://github.com/pingcap/tiflow/issues/1905) [#1904](https://github.com/pingcap/tiflow/issues/1904)
         - Make the sorter I/O errors more user-friendly
 
 ## Bug Fixes
@@ -115,7 +116,7 @@ TiDB version: 5.0.3
     - Fix a bug that TiFlash adds wrong padding for non-binary characters in the `CAST` function
     - Fix the issue of incorrect results when handling aggregation queries with complex `GROUP BY` columns
     - Fix the TiFlash panic issue that occurs under heavy write pressure
-    - Fix the panic that occurs when the right jon key is not nullalbe and the left join key is nullable
+    - Fix the panic that occurs when the right join key is not nullable and the left join key is nullable
     - Fix the potential issue that the `read-index` requests take a long time
     - Fix the panic issue that occurs when the read load is heavy
     - Fix the panic issue that might occur when the `Date_Format` function is called with the `STRING` type argument and `NULL` values
@@ -124,12 +125,12 @@ TiDB version: 5.0.3
 
     + TiCDC
 
-        - Fix the issue that TiCDC owner exits when refreshing the checkpoint [#1902](https://github.com/pingcap/ticdc/issues/1902)
-        - Fix a bug that some MySQL connection might leak after MySQL sink meets the error and pauses [#1946](https://github.com/pingcap/ticdc/pull/1946)
-        - Fix the panic issue that occurs when TiCDC fails to read `/proc/meminfo` [#2024](https://github.com/pingcap/ticdc/pull/2024)
-        - Reduce TiCDC's runtime memory consumption [#2012](https://github.com/pingcap/ticdc/pull/2012) [#1958](https://github.com/pingcap/ticdc/pull/1958)
-        - Fix a bug that might cause TiCDC server panic due to the late calculation of resolved ts [#1576](https://github.com/pingcap/ticdc/issues/1576)
-        - Fix the potential deadlock issue for the processor [#2142](https://github.com/pingcap/ticdc/pull/2142)
+        - Fix the issue that TiCDC owner exits when refreshing the checkpoint [#1902](https://github.com/pingcap/tiflow/issues/1902)
+        - Fix a bug that some MySQL connection might leak after MySQL sink meets the error and pauses [#1946](https://github.com/pingcap/tiflow/pull/1946)
+        - Fix the panic issue that occurs when TiCDC fails to read `/proc/meminfo` [#2024](https://github.com/pingcap/tiflow/pull/2024)
+        - Reduce TiCDC's runtime memory consumption [#2012](https://github.com/pingcap/tiflow/pull/2012) [#1958](https://github.com/pingcap/tiflow/pull/1958)
+        - Fix a bug that might cause TiCDC server panic due to the late calculation of resolved ts [#1576](https://github.com/pingcap/tiflow/issues/1576)
+        - Fix the potential deadlock issue for the processor [#2142](https://github.com/pingcap/tiflow/pull/2142)
 
     + Backup & Restore (BR)
 

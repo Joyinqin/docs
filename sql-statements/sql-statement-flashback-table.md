@@ -8,7 +8,7 @@ aliases: ['/docs/dev/sql-statements/sql-statement-flashback-table/','/docs/dev/r
 
 The `FLASHBACK TABLE` syntax is introduced since TiDB 4.0. You can use the `FLASHBACK TABLE` statement to restore the tables and data dropped by the `DROP` or `TRUNCATE` operation within the Garbage Collection (GC) lifetime.
 
-The system variable [`tidb_gc_life_time`](/system-variables.md#tidb_gc_life_time-new-in-v50) (default: `10m0s`) defines the retention time of earlier versions of rows. The current `safePoint` of where garabage collection has been performed up to can be obtained with the following query:
+The system variable [`tidb_gc_life_time`](/system-variables.md#tidb_gc_life_time-new-in-v50) (default: `10m0s`) defines the retention time of earlier versions of rows. The current `safePoint` of where garbage collection has been performed up to can be obtained with the following query:
 
 {{< copyable "sql" >}}
 
@@ -42,13 +42,6 @@ FlashbackToNewName ::=
 ## Notes
 
 If a table is dropped and the GC lifetime has passed, you can no longer use the `FLASHBACK TABLE` statement to recover the dropped data. Otherwise, an error like `Can't find dropped / truncated table 't' in GC safe point 2020-03-16 16:34:52 +0800 CST` will be returned.
-
-Pay attention to the following conditions and requirements when you enable TiDB Binlog and use the `FLASHBACK TABLE` statement:
-
-* The downstream secondary cluster must also support `FLASHBACK TABLE`.
-* The GC lifetime of the secondary cluster must be longer than that of the primary cluster.
-* The delay of replication between the upstream and downstream might also cause the failure to recover data to the downstream.
-* If an error occurs when TiDB Binlog is replicating a table, you need to filter that table in TiDB Binlog and manually import all data of that table.
 
 ## Example
 

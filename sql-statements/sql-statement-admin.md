@@ -6,28 +6,49 @@ aliases: ['/docs/dev/sql-statements/sql-statement-admin/','/docs/dev/reference/s
 
 # ADMIN
 
-This statement is a TiDB extension syntax, used to view the status of TiDB and check the data of tables in TiDB.
+This statement is a TiDB extension syntax, used to view the status of TiDB and check the data of tables in TiDB. This document introduces the following `ADMIN` related statements:
+
+- [`ADMIN RELOAD`](#admin-reload-statement)
+- [`ADMIN PLUGINS`](#admin-plugins-related-statement)
+- [`ADMIN ... BINDINGS`](#admin-bindings-related-statement)
+- [`ADMIN REPAIR`](#admin-repair-statement)
+- [`ADMIN SHOW NEXT_ROW_ID`](#admin-show-next_row_id-statement)
+- [`ADMIN SHOW SLOW`](#admin-show-slow-statement)
+- [`ADMIN CREATE WORKLOAD SNAPSHOT`](#admin-create-workload-snapshot-statement)
 
 ## DDL related statement
 
+<CustomContent platform="tidb-cloud">
+
 | Statement                                                                                | Description                 |
 |------------------------------------------------------------------------------------------|-----------------------------|
-| [`ADMIN CANCEL DDL JOBS`](/sql-statements/sql-statement-admin-cancel-ddl.md)             | Cancels a currently running DDL jobs. |
+| [`ADMIN CANCEL DDL JOBS`](/sql-statements/sql-statement-admin-cancel-ddl.md)             | Cancels the currently running DDL jobs. |
+| [`ADMIN PAUSE DDL JOBS`](/sql-statements/sql-statement-admin-pause-ddl.md)               | Pauses the currently running DDL jobs. |
+| [`ADMIN RESUME DDL JOBS`](/sql-statements/sql-statement-admin-resume-ddl.md)             | Resumes the paused DDL jobs. |
 | [`ADMIN CHECKSUM TABLE`](/sql-statements/sql-statement-admin-checksum-table.md)          | Calculates the CRC64 of all rows + indexes of a table. |
 | [<code>ADMIN CHECK [TABLE\|INDEX]</code>](/sql-statements/sql-statement-admin-check-table-index.md) | Checks for consistency of a table or index. |
 | [<code>ADMIN SHOW DDL [JOBS\|QUERIES]</code>](/sql-statements/sql-statement-admin-show-ddl.md)      | Shows details about currently running or recently completed DDL jobs. |
 
-## `ADMIN RELOAD` statement
+</CustomContent>
 
-{{< copyable "sql" >}}
+<CustomContent platform="tidb">
+
+| Statement                                                                                | Description                 |
+|------------------------------------------------------------------------------------------|-----------------------------|
+| [`ADMIN CANCEL DDL JOBS`](/sql-statements/sql-statement-admin-cancel-ddl.md)             | Cancels the currently running DDL jobs. |
+| [`ADMIN CHECKSUM TABLE`](/sql-statements/sql-statement-admin-checksum-table.md)          | Calculates the CRC64 of all rows + indexes of a table. |
+| [<code>ADMIN CHECK [TABLE\|INDEX]</code>](/sql-statements/sql-statement-admin-check-table-index.md) | Checks for consistency of a table or index. |
+| [<code>ADMIN SHOW DDL [JOBS\|QUERIES]</code>](/sql-statements/sql-statement-admin-show-ddl.md)      | Shows details about currently running or recently completed DDL jobs. |
+
+</CustomContent>
+
+## `ADMIN RELOAD` statement
 
 ```sql
 ADMIN RELOAD expr_pushdown_blacklist;
 ```
 
-The above statement is used to reload the blocklist pushed down by the expression.
-
-{{< copyable "sql" >}}
+The above statement is used to reload the blocklist of expression pushdown.
 
 ```sql
 ADMIN RELOAD opt_rule_blacklist;
@@ -37,15 +58,15 @@ The above statement is used to reload the blocklist of logic optimization rules.
 
 ## `ADMIN PLUGINS` related statement
 
-{{< copyable "sql" >}}
+> **Note:**
+>
+> This feature is not available on [{{{ .starter }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#starter) and [{{{ .essential }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#essential) instances.
 
 ```sql
 ADMIN PLUGINS ENABLE plugin_name [, plugin_name] ...;
 ```
 
 The above statement is used to enable the `plugin_name` plugin.
-
-{{< copyable "sql" >}}
 
 ```sql
 ADMIN PLUGINS DISABLE plugin_name [, plugin_name] ...;
@@ -55,81 +76,160 @@ The above statement is used to disable the `plugin_name` plugin.
 
 ## `ADMIN BINDINGS` related statement
 
-{{< copyable "sql" >}}
-
 ```sql
-ADMIN FLUSH bindings;
+ADMIN FLUSH BINDINGS;
 ```
 
 The above statement is used to persist SQL Plan binding information.
 
-{{< copyable "sql" >}}
-
 ```sql
-ADMIN CAPTURE bindings;
+ADMIN CAPTURE BINDINGS;
 ```
 
 The above statement can generate the binding of SQL Plan from the `SELECT` statement that occurs more than once.
 
-{{< copyable "sql" >}}
-
 ```sql
-ADMIN EVOLVE bindings;
+ADMIN EVOLVE BINDINGS;
 ```
 
-After the automatic binding feature is enabled, the evolution of SQL Plan binding information is triggered every `bind-info-leave` (the default value is `3s`). The above statement is used to proactively trigger this evolution.
-
-{{< copyable "sql" >}}
+After the automatic binding feature is enabled, the evolution of SQL Plan binding information is triggered every `bind-info-lease` (the default value is `3s`). The above statement is used to proactively trigger this evolution.
 
 ```sql
-ADMIN RELOAD bindings;
+ADMIN RELOAD BINDINGS;
 ```
 
 The above statement is used to reload SQL Plan binding information.
 
 ## `ADMIN REPAIR` statement
 
-To overwrite the metadata of the stored table in an untrusted way in extreme cases, use `ADMIN REPAIR TABLE`:
+<CustomContent platform="tidb-cloud">
 
-{{< copyable "sql" >}}
+> **Note:**
+>
+> This TiDB statement is not applicable to TiDB Cloud.
+
+</CustomContent>
+
+To overwrite the metadata of the stored table in an untrusted way in extreme cases, use `ADMIN REPAIR TABLE`:
 
 ```sql
 ADMIN REPAIR TABLE tbl_name CREATE TABLE STATEMENT;
 ```
 
-Here “untrusted” means that you need to manually ensure that the metadata of the original table can be covered by the `CREATE TABLE STATEMENT` operation. To use this `REPAIR` statement, enable the [`repair-mode`](/tidb-configuration-file.md#repair-mode) configuration item, and make sure that the tables to be repaired are listed in the [`repair-table-list`](/tidb-configuration-file.md#repair-table-list).
+<CustomContent platform="tidb">
+
+Here "untrusted" means that you need to manually ensure that the metadata of the original table can be covered by the `CREATE TABLE STATEMENT` operation. To use this `REPAIR` statement, enable the [`repair-mode`](/tidb-configuration-file.md#repair-mode) configuration item, and make sure that the tables to be repaired are listed in the [`repair-table-list`](/tidb-configuration-file.md#repair-table-list).
+
+</CustomContent>
+
+## `ADMIN SHOW NEXT_ROW_ID` statement
+
+```sql
+ADMIN SHOW t NEXT_ROW_ID;
+```
+
+The above statement is used to view the details of some special columns of a table. The output is the same as [SHOW TABLE NEXT_ROW_ID](/sql-statements/sql-statement-show-table-next-rowid.md).
 
 ## `ADMIN SHOW SLOW` statement
 
-{{< copyable "sql" >}}
+> **Note:**
+>
+> This feature is not available on [{{{ .starter }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#starter) and [{{{ .essential }}}](https://docs.pingcap.com/tidbcloud/select-cluster-tier#essential) instances.
 
 ```sql
 ADMIN SHOW SLOW RECENT N;
 ```
 
-{{< copyable "sql" >}}
-
 ```sql
 ADMIN SHOW SLOW TOP [INTERNAL | ALL] N;
 ```
 
-For details, refer to [admin show slow statement](/identify-slow-queries.md#admin-show-slow-command)
+<CustomContent platform="tidb">
+
+For details, refer to [`ADMIN SHOW SLOW` command](/identify-slow-queries.md#admin-show-slow-command).
+
+</CustomContent>
+
+## `ADMIN CREATE WORKLOAD SNAPSHOT` statement
+
+<CustomContent platform="tidb-cloud">
+
+> **Note:**
+>
+> This TiDB statement is not applicable to TiDB Cloud.
+
+</CustomContent>
+
+<CustomContent platform="tidb">
+
+The following SQL statement will trigger a manual snapshot in the [Workload Repository](/workload-repository.md):
+
+</CustomContent>
+
+```sql
+ADMIN CREATE WORKLOAD SNAPSHOT;
+```
+
+Note that the Workload Repository must be enabled for this statement to take effect. Otherwise, it will generate an error.
 
 ## Synopsis
 
 ```ebnf+diagram
 AdminStmt ::=
-    'ADMIN' ( 'SHOW' ( 'DDL' ( 'JOBS' Int64Num? WhereClauseOptional | 'JOB' 'QUERIES' NumList )? | TableName 'NEXT_ROW_ID' | 'SLOW' AdminShowSlow ) | 'CHECK' ( 'TABLE' TableNameList | 'INDEX' TableName Identifier ( HandleRange ( ',' HandleRange )* )? ) | 'RECOVER' 'INDEX' TableName Identifier | 'CLEANUP' ( 'INDEX' TableName Identifier | 'TABLE' 'LOCK' TableNameList ) | 'CHECKSUM' 'TABLE' TableNameList | 'CANCEL' 'DDL' 'JOBS' NumList | 'RELOAD' ( 'EXPR_PUSHDOWN_BLACKLIST' | 'OPT_RULE_BLACKLIST' | 'BINDINGS' ) | 'PLUGINS' ( 'ENABLE' | 'DISABLE' ) PluginNameList | 'REPAIR' 'TABLE' TableName CreateTableStmt | ( 'FLUSH' | 'CAPTURE' | 'EVOLVE' ) 'BINDINGS' )
+    'ADMIN' ( 
+        'SHOW' ( 
+            'DDL' ( 
+                'JOBS' Int64Num? WhereClauseOptional 
+                | 'JOB' 'QUERIES' (NumList | AdminStmtLimitOpt)
+            )? 
+            | TableName 'NEXT_ROW_ID' 
+            | 'SLOW' AdminShowSlow 
+            | 'BDR' 'ROLE'
+        ) 
+        | 'CHECK' ( 
+            'TABLE' TableNameList 
+            | 'INDEX' TableName Identifier ( HandleRange ( ',' HandleRange )* )? 
+        ) 
+        | 'RECOVER' 'INDEX' TableName Identifier 
+        | 'CLEANUP' ( 
+            'INDEX' TableName Identifier 
+            | 'TABLE' 'LOCK' TableNameList ) 
+        | 'CHECKSUM' 'TABLE' TableNameList | 'CANCEL' 'DDL' 'JOBS' NumList 
+        | ( 'CANCEL' | 'PAUSE' | 'RESUME' ) 'DDL' 'JOBS' NumList
+        | 'RELOAD' (
+            'EXPR_PUSHDOWN_BLACKLIST' 
+            | 'OPT_RULE_BLACKLIST' 
+            | 'BINDINGS'
+            | 'STATS_EXTENDED'
+            | 'STATISTICS'
+        ) 
+        | 'PLUGINS' ( 'ENABLE' | 'DISABLE' ) PluginNameList 
+        | 'REPAIR' 'TABLE' TableName CreateTableStmt 
+        | ( 'FLUSH' | 'CAPTURE' | 'EVOLVE' ) 'BINDINGS'
+        | 'FLUSH' ('SESSION' | 'INSTANCE') 'PLAN_CACHE'
+        | 'SET' 'BDR' 'ROLE' ( 'PRIMARY' | 'SECONDARY' )
+        | 'UNSET' 'BDR' 'ROLE'
+        | 'CREATE' 'WORKLOAD' 'SNAPSHOT'
+    )
+
+NumList ::=
+    Int64Num ( ',' Int64Num )*
+
+AdminStmtLimitOpt ::=
+    'LIMIT' LengthNum
+|    'LIMIT' LengthNum ',' LengthNum
+|    'LIMIT' LengthNum 'OFFSET' LengthNum
+
+TableNameList ::=
+    TableName ( ',' TableName )*
 ```
 
 ## Examples
 
 Run the following command to view the last 10 completed DDL jobs in the currently running DDL job queue. When `NUM` is not specified, only the last 10 completed DDL jobs is presented by default.
 
-{{< copyable "sql" >}}
-
 ```sql
-admin show ddl jobs;
+ADMIN SHOW DDL JOBS;
 ```
 
 ```
@@ -152,10 +252,8 @@ admin show ddl jobs;
 
 Run the following command to view the last 5 completed DDL jobs in the currently running DDL job queue:
 
-{{< copyable "sql" >}}
-
 ```sql
-admin show ddl jobs 5;
+ADMIN SHOW DDL JOBS 5;
 ```
 
 ```
@@ -171,12 +269,26 @@ admin show ddl jobs 5;
 +--------+---------+------------+---------------------+----------------+-----------+----------+-----------+-----------------------------------+-----------------------------------+---------------+
 ```
 
-Run the following command to view the uncompleted DDL jobs in the test database. The results include the DDL jobs that are running and the last 5 DDL jobs that are completed but failed.
-
-{{< copyable "sql" >}}
+Run the following command to view the details of some special columns of a table. The output is the same as [SHOW TABLE NEXT_ROW_ID](/sql-statements/sql-statement-show-table-next-rowid.md).
 
 ```sql
-admin show ddl jobs 5 where state!='synced' and db_name='test';
+ADMIN SHOW t NEXT_ROW_ID;
+```
+
+```sql
++---------+------------+-------------+--------------------+----------------+
+| DB_NAME | TABLE_NAME | COLUMN_NAME | NEXT_GLOBAL_ROW_ID | ID_TYPE        |
++---------+------------+-------------+--------------------+----------------+
+| test    | t          | _tidb_rowid |                101 | _TIDB_ROWID    |
+| test    | t          | _tidb_rowid |                  1 | AUTO_INCREMENT |
++---------+------------+-------------+--------------------+----------------+
+2 rows in set (0.01 sec)
+```
+
+Run the following command to view the uncompleted DDL jobs in the test database. The results include the DDL jobs that are running and the last 5 DDL jobs that are completed but failed.
+
+```sql
+ADMIN SHOW DDL JOBS 5 WHERE state != 'synced' AND db_name = 'test';
 ```
 
 ```
@@ -207,7 +319,8 @@ admin show ddl jobs 5 where state!='synced' and db_name='test';
     * `synced`: it indicates that the operation has been performed successfully and all TiDB instances have been synced to this state.
     * `rollback done`: it indicates that the operation has failed and has finished rolling back.
     * `rollingback`: it indicates that the operation has failed and is rolling back.
-    * `cancelling`: it indicates that the operation is being cancelled. This state only occurs when you cancel DDL jobs using the `ADMIN CANCEL DDL JOBS` command.
+    * `cancelling`: it indicates that the operation is being canceled. This state only occurs when you cancel DDL jobs using the [`ADMIN CANCEL DDL JOBS`](/sql-statements/sql-statement-admin-cancel-ddl.md) command.
+    * `paused`: it indicates that the operation has been paused. This state only appears when you use the [`ADMIN PAUSE DDL JOBS`](/sql-statements/sql-statement-admin-pause-ddl.md) command to pause the DDL job. You can use the [`ADMIN RESUME DDL JOBS`](/sql-statements/sql-statement-admin-resume-ddl.md) command to resume the DDL job.
 
 ## MySQL compatibility
 

@@ -1,5 +1,6 @@
 ---
 title: TiDB 5.1 Release Notes
+summary: TiDB 5.1 introduces support for Common Table Expression, dynamic privilege feature, and Stale Read. It also includes new statistics type, Lock View feature, and TiKV write rate limiter. Compatibility changes include new system and configuration variables. Other improvements and bug fixes are also part of this release.
 ---
 
 # TiDB 5.1 Release Notes
@@ -22,7 +23,7 @@ In v5.1, the key new features or improvements are as follows:
 
 > **Note:**
 >
-> When upgrading from an earlier TiDB version to v5.1, if you want to know the compatibility change notes of all intermediate versions, you can check the [Release Notes](/releases/release-notes.md) for the corresponding version.
+> When upgrading from an earlier TiDB version to v5.1, if you want to know the compatibility change notes of all intermediate versions, you can check the [Release Notes](/releases/_index.md) for the corresponding version.
 
 ### System variables
 
@@ -40,7 +41,7 @@ In v5.1, the key new features or improvements are as follows:
 | Configuration file | Configuration item | Change type   | Description   |
 |:----------|:-----------|:-----------|:-----------|
 | TiDB configuration file | [`security.enable-sem`](/tidb-configuration-file.md#enable-sem)  | Newly added  | Controls whether to enable the Security Enhanced Mode (SEM). The default value of this configuration item is `false`, which means the SEM is disabled. |
-| TiDB configuration file | [`performance.committer-concurrency`](/tidb-configuration-file.md#committer-concurrency)  | Modified  | Controls the concurrency number for requests related to commit operations in the commit phase of a single transaction. The default value is changed from `16` to `128`. |
+| TiDB configuration file | `performance.committer-concurrency`  | Modified  | Controls the concurrency number for requests related to commit operations in the commit phase of a single transaction. The default value is changed from `16` to `128`. |
 | TiDB configuration file | [`performance.tcp-no-delay`](/tidb-configuration-file.md#tcp-no-delay)  | Newly added  | Determines whether to enable TCP_NODELAY at the TCP layer. The default value is `true`, which means TCP_NODELAY is enabled. |
 | TiDB configuration file | [`performance.enforce-mpp`](/tidb-configuration-file.md#enforce-mpp)  | Newly added  | Controls whether TiDB ignores cost estimates of Optimizer at the instance level and enforces the MPP mode. The default value is `false`. This configuration item controls the initial value of the system variable [`tidb_enforce_mpp`](/system-variables.md#tidb_enforce_mpp-new-in-v51). |
 | TiDB configuration file | [`pessimistic-txn.deadlock-history-capacity`](/tidb-configuration-file.md#deadlock-history-capacity)  | Newly added  | Sets the maximum number of deadlock events that can be recorded in the [`INFORMATION_SCHEMA.DEADLOCKS`](/information-schema/information-schema-deadlocks.md) table of a single TiDB server. The default value is `10`. |
@@ -58,12 +59,12 @@ In v5.1, the key new features or improvements are as follows:
 
 ### Others
 
-- Before the upgrade, check the value of the TiDB configuration [`feedback-probability`](/tidb-configuration-file.md#feedback-probability). If the value is not 0, the "panic in the recoverable goroutine" error will occur after the upgrade, but this error does not affect the upgrade.
-- Upgrade the Go compiler version of TiDB from go1.13.7 to go1.16.4, which improves the TiDB performance. If you are a TiDB developer, upgrade your Go compiler version to ensure a smooth compilation. 
+- Before the upgrade, check the value of the TiDB configuration [`feedback-probability`](https://docs-archive.pingcap.com/tidb/v5.1/tidb-configuration-file#feedback-probability). If the value is not 0, the "panic in the recoverable goroutine" error will occur after the upgrade, but this error does not affect the upgrade.
+- Upgrade the Go compiler version of TiDB from go1.13.7 to go1.16.4, which improves the TiDB performance. If you are a TiDB developer, upgrade your Go compiler version to ensure a smooth compilation.
 - Avoid creating tables with clustered indexes in the cluster that uses TiDB Binlog during the TiDB rolling upgrade.
 - Avoid executing statements like `alter table ... modify column` or `alter table ... change column` during the TiDB rolling upgrade.
 - Since v5.1, setting the replica of system tables, when building TiFlash replicas for each table, is no longer supported. Before upgrading the cluster, you need to clear the relevant system table replicas; otherwise, the upgrade will fail.
-- Deprecate the `--sort-dir` parameter in the `cdc cli changefeed` command of TiCDC. Instead, you can set `--sort-dir` in the `cdc server` command. [#1795](https://github.com/pingcap/ticdc/pull/1795)
+- Deprecate the `--sort-dir` parameter in the `cdc cli changefeed` command of TiCDC. Instead, you can set `--sort-dir` in the `cdc server` command. [#1795](https://github.com/pingcap/tiflow/pull/1795)
 - After upgrading to TiDB 5.1, if TiDB returns the "function READ ONLY has only noop implementation" error, you can let TiDB ignore this error by setting the value of [`tidb_enable_noop_functions`](/system-variables.md#tidb_enable_noop_functions-new-in-v40) to `ON`. This is because the `read_only` variable in MySQL does not yet take effect in TiDB (which is a 'noop' behavior in TiDB). Therefore, even if this variable is set in TiDB, you can still write data into the TiDB cluster.
 
 ## New features
@@ -153,9 +154,9 @@ In v5.1, the key new features or improvements are as follows:
     - Improve TiCDC memory usage to avoid OOM in the following scenarios
     - If large amounts of data is accumulated during the replication interruption, exceeding 1TB, the re-replication causes OOM problems.
     - Large amounts of data writes cause OOM problems in TiCDC.
-    - Reduce the possibility of  TiCDC replication interruption in the following scenarios:
+    - Reduce the possibility of TiCDC replication interruption in the following scenarios:
         
-        [project#11](https://github.com/pingcap/ticdc/projects/11)
+        [project#11](https://github.com/pingcap/tiflow/projects/11)
 
         - Replication interruption when the network is unstable
         - Replication interruption when some TiKV/PD/TiCDC nodes are down
@@ -174,7 +175,7 @@ In v5.1, the key new features or improvements are as follows:
 
 ### Telemetry
 
-TiDB adds the running status of TiDB cluster requests in telemetry, including execution status, failure status, etc.
+TiDB adds the running status of TiDB cluster requests in telemetry, including execution status and failure status.
 
 To learn more about the information and how to disable this behavior, refer to [Telemetry](/telemetry.md).
 
@@ -184,6 +185,7 @@ To learn more about the information and how to disable this behavior, refer to [
 
     - Support the built-in function `VITESS_HASH()` [#23915](https://github.com/pingcap/tidb/pull/23915)
     - Support pushing down data of the enumerated type to TiKV to improve performance when using enumerated types in `WHERE` clauses [#23619](https://github.com/pingcap/tidb/issues/23619)
+    - Support the `RENAME USER` syntax [#23648](https://github.com/pingcap/tidb/issues/23648)
     - Optimize the calculation of Window Function to solve TiDB OOM problems when paging data with ROW_NUMBER() [#23807](https://github.com/pingcap/tidb/issues/23807)
     - Optimize the calculation of `UNION ALL` to solve the TiDB OOM problems when using `UNION ALL` to join a large number of `SELECT` statements [#21441](https://github.com/pingcap/tidb/issues/21441)
     - Optimize the dynamic pruning mode of partitioned tables to improve performance and stability [#24150](https://github.com/pingcap/tidb/issues/24150)
@@ -233,7 +235,7 @@ To learn more about the information and how to disable this behavior, refer to [
 
     + TiCDC
 
-        - Improve the descriptions of some log messages to be clearer and more useful for diagnosing problems [#1759](https://github.com/pingcap/ticdc/pull/1759)
+        - Improve the descriptions of some log messages to be clearer and more useful for diagnosing problems [#1759](https://github.com/pingcap/tiflow/pull/1759)
         - Support the back pressure feature to allow the TiCDC scanning speed to sense the downstream processing capacity [#10151](https://github.com/tikv/tikv/pull/10151)
         - Reduce memory usage when TiCDC performs the initial scan  [#10133](https://github.com/tikv/tikv/pull/10133)
         - Improve the cache hit rate for the TiCDC Old Value in pessimistic transactions [#10089](https://github.com/tikv/tikv/pull/10089)
@@ -247,8 +249,8 @@ To learn more about the information and how to disable this behavior, refer to [
     + TiDB Lightning
 
         - Improve data importing speed. The optimization results show that the speed of importing TPC-C data is increased by 30%, and the speed of importing large tables (2TB+) with more indexes (5 indexes) is increased by more than 50%. [#753](https://github.com/pingcap/br/pull/753)
-        - Add a pre-check on the data to be imported and also on the target cluster before importing, and report errors to reject the import process if it does not meet the import requirements [#999](https://github.com/pingcap/br/pull/999)
-        - Optimize the timing of checkpoint updates on the Local backend to improve performance of restarting from breakpoints[#1080](https://github.com/pingcap/br/pull/1080)
+        - Add a precheck on the data to be imported and also on the target cluster before importing, and report errors to reject the import process if it does not meet the import requirements [#999](https://github.com/pingcap/br/pull/999)
+        - Optimize the timing of checkpoint updates on the Local backend to improve performance of restarting from breakpoints [#1080](https://github.com/pingcap/br/pull/1080)
 
 ## Bug Fixes
 
@@ -267,7 +269,7 @@ To learn more about the information and how to disable this behavior, refer to [
     - Fix the wrong results of some string functions [#23759](https://github.com/pingcap/tidb/issues/23759)
     - Users now need both `INSERT` and `DELETE` privileges on a table to perform `REPLACE` operations [#23909](https://github.com/pingcap/tidb/issues/23909)
     - Users now need both `INSERT` and `DELETE` privileges on a table to perform `REPLACE` operations [#24070](https://github.com/pingcap/tidb/pull/24070)
-    - Fix the wrong `TableDual` plans caused by incorrectly comparing binaries and bytes[#23846](https://github.com/pingcap/tidb/issues/23846)
+    - Fix the wrong `TableDual` plans caused by incorrectly comparing binaries and bytes [#23846](https://github.com/pingcap/tidb/issues/23846)
     - Fix the panic issue caused by using the prefix index and index join in some cases [#24547](https://github.com/pingcap/tidb/issues/24547) [#24716](https://github.com/pingcap/tidb/issues/24716) [#24717](https://github.com/pingcap/tidb/issues/24717)
     - Fix the issue that the prepared plan cache of `point get` is incorrectly used by the `point get` statement in the transaction [#24741](https://github.com/pingcap/tidb/issues/24741)
     - Fix the issue of writing the wrong prefix index value when the collation is `ascii_bin` or `latin1_bin` [#24569](https://github.com/pingcap/tidb/issues/24569)
@@ -334,17 +336,17 @@ To learn more about the information and how to disable this behavior, refer to [
 
     + TiCDC
 
-        - Fix the concurrency issue in Unified Sorter and filter the unhelpful error messages [#1678](https://github.com/pingcap/ticdc/pull/1678)
-        - Fix a bug that the creation of redundant directories might interrupt the replication with MinIO [#1463](https://github.com/pingcap/ticdc/issues/1463)
-        - Set the default value of the `explicit_defaults_for_timestamp` session variable to ON to make the MySQL 5.7 downstream keep the same behavior with the upstream TiDB [#1585](https://github.com/pingcap/ticdc/issues/1585)
-        - Fix the issue that the incorrect handling of `io.EOF` might cause replication interruption [#1633](https://github.com/pingcap/ticdc/issues/1633)
-        - Correct the TiKV CDC endpoint CPU metric in the TiCDC dashboard [#1645](https://github.com/pingcap/ticdc/pull/1645)
-        - Increase `defaultBufferChanSize` to avoid replication blocking in some cases [#1259](https://github.com/pingcap/ticdc/issues/1259)
-        - Fix the issue that the time zone information is lost in the Avro output [#1712](https://github.com/pingcap/ticdc/pull/1712)
-        - Support cleaning up stale temporary files in Unified Sorter and forbid sharing the `sort-dir` directory [#1742](https://github.com/pingcap/ticdc/pull/1742)
-        - Fix a deadlock bug in the KV client that occurs when many stale Regions exist [#1599](https://github.com/pingcap/ticdc/issues/1599)
-        - Fix the wrong help information in the `--cert-allowed-cn` flag [#1697](https://github.com/pingcap/ticdc/pull/1697)
-        - Revert the update for `explicit_defaults_for_timestamp` which requires the SUPER privilege when replicating data to MySQL [#1750](https://github.com/pingcap/ticdc/pull/1750)
-        - Support the sink flow control to reduce the risk of memory overflow [#1840](https://github.com/pingcap/ticdc/pull/1840)
-        - Fix a bug that the replication task might stop when moving a table [#1828](https://github.com/pingcap/ticdc/pull/1828)
-        - Fix the issue that the TiKV GC safe point is blocked due to the stagnation of TiCDC changefeed checkpoint [#1759](https://github.com/pingcap/ticdc/pull/1759)
+        - Fix the concurrency issue in Unified Sorter and filter the unhelpful error messages [#1678](https://github.com/pingcap/tiflow/pull/1678)
+        - Fix a bug that the creation of redundant directories might interrupt the replication with MinIO [#1463](https://github.com/pingcap/tiflow/issues/1463)
+        - Set the default value of the `explicit_defaults_for_timestamp` session variable to ON to make the MySQL 5.7 downstream keep the same behavior with the upstream TiDB [#1585](https://github.com/pingcap/tiflow/issues/1585)
+        - Fix the issue that the incorrect handling of `io.EOF` might cause replication interruption [#1633](https://github.com/pingcap/tiflow/issues/1633)
+        - Correct the TiKV CDC endpoint CPU metric in the TiCDC dashboard [#1645](https://github.com/pingcap/tiflow/pull/1645)
+        - Increase `defaultBufferChanSize` to avoid replication blocking in some cases [#1259](https://github.com/pingcap/tiflow/issues/1259)
+        - Fix the issue that the time zone information is lost in the Avro output [#1712](https://github.com/pingcap/tiflow/pull/1712)
+        - Support cleaning up stale temporary files in Unified Sorter and forbid sharing the `sort-dir` directory [#1742](https://github.com/pingcap/tiflow/pull/1742)
+        - Fix a deadlock bug in the KV client that occurs when many stale Regions exist [#1599](https://github.com/pingcap/tiflow/issues/1599)
+        - Fix the wrong help information in the `--cert-allowed-cn` flag [#1697](https://github.com/pingcap/tiflow/pull/1697)
+        - Revert the update for `explicit_defaults_for_timestamp` which requires the SUPER privilege when replicating data to MySQL [#1750](https://github.com/pingcap/tiflow/pull/1750)
+        - Support the sink flow control to reduce the risk of memory overflow [#1840](https://github.com/pingcap/tiflow/pull/1840)
+        - Fix a bug that the replication task might stop when moving a table [#1828](https://github.com/pingcap/tiflow/pull/1828)
+        - Fix the issue that the TiKV GC safe point is blocked due to the stagnation of TiCDC changefeed checkpoint [#1759](https://github.com/pingcap/tiflow/pull/1759)

@@ -1,5 +1,6 @@
 ---
 title: TiDB 5.0.1 Release Notes
+summary: TiDB 5.0.1 was released on April 24, 2021. The default value of `committer-concurrency` changed to 128. Various bug fixes and improvements were made to TiDB, TiKV, PD, TiFlash, and Tools. For example, TiDB fixed issues with query results and performance regression, while TiKV fixed issues with coprocessors and startup failures. Tools like TiDB Lightning and Backup & Restore also received bug fixes.
 ---
 
 # TiDB 5.0.1 Release Notes
@@ -10,7 +11,7 @@ TiDB version: 5.0.1
 
 ## Compatibility change
 
-- The default value of the [`committer-concurrency`](/tidb-configuration-file.md#committer-concurrency) configuration item is changed from `16` to `128`.
+- The default value of the `committer-concurrency` configuration item is changed from `16` to `128`.
 
 ## Improvements
 
@@ -89,9 +90,9 @@ TiDB version: 5.0.1
 
     + TiCDC
 
-        - Fix the concurrency issue in Unified Sorter and filter the unhelpful error messages [#1678](https://github.com/pingcap/ticdc/pull/1678)
-        - Fix a bug that the creation of redundant directories might interrupt the replication with MinIO [#1672](https://github.com/pingcap/ticdc/pull/1672)
-        - Set the default value of the `explicit_defaults_for_timestamp` session variable to `ON` to make the MySQL 5.7 downstream keep the same behavior with the upstream TiDB [#1659](https://github.com/pingcap/ticdc/pull/1659)
-        - Fix the issue that the incorrect handling of `io.EOF` might cause replication interruption [#1648](https://github.com/pingcap/ticdc/pull/1648)
-        - Correct the TiKV CDC endpoint CPU metric in the TiCDC dashboard [#1645](https://github.com/pingcap/ticdc/pull/1645)
-        - Increase `defaultBufferChanSize` to avoid replication blocking in some cases [#1632](https://github.com/pingcap/ticdc/pull/1632)
+        - Fix the concurrency issue in Unified Sorter and filter the unhelpful error messages [#1678](https://github.com/pingcap/tiflow/pull/1678)
+        - Fix a bug that the creation of redundant directories might interrupt the replication with MinIO [#1672](https://github.com/pingcap/tiflow/pull/1672)
+        - Set the default value of the `explicit_defaults_for_timestamp` session variable to `ON` to make the MySQL 5.7 downstream keep the same behavior with the upstream TiDB [#1659](https://github.com/pingcap/tiflow/pull/1659)
+        - Fix the issue that the incorrect handling of `io.EOF` might cause replication interruption [#1648](https://github.com/pingcap/tiflow/pull/1648)
+        - Correct the TiKV CDC endpoint CPU metric in the TiCDC dashboard [#1645](https://github.com/pingcap/tiflow/pull/1645)
+        - Increase `defaultBufferChanSize` to avoid replication blocking in some cases [#1632](https://github.com/pingcap/tiflow/pull/1632)

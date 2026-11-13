@@ -6,18 +6,9 @@ aliases: ['/docs/dev/sync-diff-inspector/sync-diff-inspector-overview/','/docs/d
 
 # sync-diff-inspector User Guide
 
-[sync-diff-inspector](https://github.com/pingcap/tidb-tools/tree/master/sync_diff_inspector) is a tool used to compare data stored in the databases with the MySQL protocol. For example, it can compare the data in MySQL with that in TiDB, the data in MySQL with that in MySQL, or the data in TiDB with that in TiDB. In addition, you can also use this tool to repair data in the scenario where a small amount of data is inconsistent.
+[sync-diff-inspector](https://github.com/pingcap/tiflow/tree/master/sync_diff_inspector) is a tool used to compare data stored in MySQL-compatible databases (including MySQL and TiDB). For example, it can compare the data in MySQL with that in TiDB, the data in MySQL with that in MySQL, or the data in TiDB with that in TiDB. In addition, you can also use this tool to repair data in the scenario where a small amount of data is inconsistent.
 
-This guide introduces the key features of sync-diff-inspector and describes how to configure and use this tool. To download sync-diff-inspector, use one of the following methods:
-
-+ Binary package. Click [tidb-enterprise-tools-nightly-linux-amd64](https://download.pingcap.org/tidb-enterprise-tools-nightly-linux-amd64.tar.gz) to download.
-+ Docker image. Execute the following command to download:
-
-    {{< copyable "shell-regular" >}}
-
-    ```shell
-    docker pull pingcap/tidb-enterprise-tools
-    ```
+This guide introduces the key features of sync-diff-inspector and describes how to configure and use this tool.
 
 ## Key features
 
@@ -25,245 +16,322 @@ This guide introduces the key features of sync-diff-inspector and describes how 
 * Generate the SQL statements used to repair data if the data inconsistency exists
 * Support [data check for tables with different schema or table names](/sync-diff-inspector/route-diff.md)
 * Support [data check in the sharding scenario](/sync-diff-inspector/shard-diff.md)
-* Support [data check for TiDB upstream-downstream clusters](/sync-diff-inspector/upstream-downstream-diff.md)
+* Support [data check for TiDB upstream-downstream clusters](/ticdc/ticdc-upstream-downstream-check.md)
+* Support [data check in the DM replication scenario](/sync-diff-inspector/dm-diff.md)
 
-## Usage of sync-diff-inspector
+## Install sync-diff-inspector
 
-### Restrictions
+The installation method varies depending on your TiDB version:
+
+For TiDB v8.5.6 and later versions:
+
++ Install using TiUP:
+
+    ```shell
+    tiup install sync-diff-inspector
+    ```
+
++ Binary package. The sync-diff-inspector binary package is included in the TiDB Toolkit. To download the TiDB Toolkit, see [Download TiDB Tools](/download-ecosystem-tools.md).
+
++ Docker image. Execute the following command to download:
+
+    ```shell
+    docker pull pingcap/sync-diff-inspector:latest
+    ```
+
+For TiDB versions before v8.5.6:
+
++ Binary package from the legacy [`tidb-tools`](https://github.com/pingcap/tidb-tools) repository. The sync-diff-inspector binary package is included in the TiDB Toolkit. To download the TiDB Toolkit, see [Download TiDB Tools](/download-ecosystem-tools.md).
+
++ Docker image (legacy version). Execute the following command to download:
+
+    ```shell
+    docker pull pingcap/tidb-tools:latest
+    ```
+
+## Restrictions of sync-diff-inspector
 
 * Online check is not supported for data migration between MySQL and TiDB. Ensure that no data is written into the upstream-downstream checklist, and that data in a certain range is not changed. You can check data in this range by setting `range`.
 
-* `JSON`, `BIT`, `BINARY`, `BLOB` and other types of data are not supported. When you perform a data check, you need to set `ignore-columns` to skip checking these types of data.
+* Data type support notes:
 
-* In TiDB and MySQL, `FLOAT`, `DOUBLE` and other floating-point types are implemented differently, so checksum might be calculated differently. If the data checks are inconsistent due to these data types, set `ignore-columns` to skip checking these columns.
+    * **FLOAT/DOUBLE**: Floating-point types are implemented differently in TiDB and MySQL. `FLOAT` and `DOUBLE` respectively take 6 and 15 significant digits for calculating checksum. If you do not want to use this feature, set `ignore-columns` to skip checking these columns.
+    * **JSON**: Supported for comparison. Be aware that collation and character set differences for JSON string values between upstream and downstream can lead to false positives.
+    * **BLOB/VARBINARY**: Supported as binary data and compared byte-for-byte.
+    * **BIT**: Supported for MySQL to TiDB comparisons. Validated for widths 1, 8, 16, and 64. If your schema uses non-standard widths or application-level transformations, perform a targeted validation test.
 
 * Support checking tables that do not contain the primary key or the unique index. However, if data is inconsistent, the generated SQL statements might not be able to repair the data correctly.
 
-### Database privilege
+## Database privileges for sync-diff-inspector
 
-sync-diff-inspector needs to obtain the information of table schema, to query data, and to build the `checkpoint` database to save breakpoint information. The required database privileges are as follows:
+To access table schemas and query data, sync-diff-inspector requires specific database privileges. Grant the following privileges on both the upstream and downstream databases:
 
-* Upstream database
-    - `SELECT` (checks data for comparison)
-    - `SHOW_DATABASES` (views database name)
-    - `RELOAD` (views table schema)
-* Downstream database
-    - `SELECT` (checks data for comparison)
-    - `CREATE` (creates the `checkpoint` database and tables)
-    - `DELETE` (deletes information in the `checkpoint` table)
-    - `INSERT` (writes data into the `checkpoint` table)
-    - `UPDATE` (modifies the `checkpoint` table)
-    - `SHOW_DATABASES` (views database name)
-    - `RELOAD` (views table schema)
+- `SELECT`: required to compare data.
+- `RELOAD`: required to view table schemas.
+- `PROCESS`: required when both the upstream and downstream are TiDB clusters. It is used to query the `INFORMATION_SCHEMA.CLUSTER_INFO` table.
 
-### Configuration file description
+> **Note**:
+> 
+> - **DO NOT** grant the [`SHOW DATABASES`](/sql-statements/sql-statement-show-databases.md) privilege on all databases (`*.*`). Otherwise, sync-diff-inspector will attempt to access inaccessible databases, which causes errors.
+> - For MySQL data sources, ensure that the [`skip_show_database`](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_skip_show_database) system variable is set to `OFF`. If this variable is set to `ON`, the check might fail.
 
-The configuration of sync-diff-inspector consists of three parts:
+## Configuration file description
 
-- `Global config`: General configurations, including log level, chunk size, number of threads to check.
-- `Tables config`: Configures the tables for checking. If some tables have a certain mapping relationship between the upstream and downstream databases or have some special requirements, you must configure these tables.
+The configuration of sync-diff-inspector consists of the following parts:
+
+- `Global config`: General configurations, such as number of threads to check, whether to export SQL statement to fix inconsistent tables, whether to compare the data, and whether to skip checking tables that do not exist in the upstream or downstream.
 - `Databases config`: Configures the instances of the upstream and downstream databases.
+- `Routes`: Rules for upstream multiple schema names to match downstream single schema names **(optional)**.
+- `Task config`: Configures the tables for checking. If some tables have a certain mapping relationship between the upstream and downstream databases or have some special requirements, you must configure these tables.
+- `Table config`: Special configurations for specific tables, such as specified ranges and columns to be ignored **(optional)**.
 
 Below is the description of a complete configuration file:
+
+- Note: configurations with `s` after their name can have multiple values, so you need to use square brackets `[]` to contain the configuration values.
 
 ``` toml
 # Diff Configuration.
 
 ######################### Global config #########################
-
-# The log level. You can set it to "info" or "debug".
-log-level = "info"
-
-# sync-diff-inspector divides the data into multiple chunks based on the primary key,
-# unique key, or the index, and then compares the data of each chunk.
-# Uses "chunk-size" to set the size of a chunk.
-chunk-size = 1000
-
-# The number of goroutines created to check data
+# The number of goroutines created to check data. The number of connections between sync-diff-inspector and upstream/downstream databases is slightly greater than this value.
 check-thread-count = 4
 
-# The proportion of sampling check. If you set it to 100, all the data is checked.
-sample-percent = 100
+# If enabled, SQL statements is exported to fix inconsistent tables.
+export-fix-sql = true
 
-# If enabled, the chunk's checksum is calculated and data is compared by checksum.
-# If disabled, data is compared line by line.
-use-checksum = true
+# Only compares the data instead of the table structure. This configuration item is an experimental feature. It is not recommended that you use it in the production environment.
+check-data-only = false
 
-# If it is set to true, data is checked only by calculating checksum. Data is not checked after inspection, even if the upstream and downstream checksums are inconsistent.
-only-use-checksum = false
+# Only compares the table structure instead of the data.
+check-struct-only = false
 
-# Whether to use the checkpoint of the last check. If it is enabled, the inspector only checks the last unverified chunks and chunks that failed the verification.
-use-checkpoint = true
+# If enabled, sync-diff-inspector skips checking tables that do not exist in the upstream or downstream.
+skip-non-existing-table = false
 
-# If it is set to true, data check is ignored.
-# If it is set to false, data is checked.
-ignore-data-check = false
-
-# If it is set to true, the table struct comparison is ignored.
-# If set to false, the table struct is compared.
-ignore-struct-check = false
-
-# The name of the file which saves the SQL statements used to repair data
-fix-sql-file = "fix.sql"
-
-######################### Tables config #########################
-
-# To compare the data of a large number of tables with different schema names or table names, or check the data of multiple upstream sharded tables and downstream table family, use the table-rule to configure the mapping relationship. You can configure the mapping rule only for the schema or table. Also, you can configure the mapping rules for both the schema and the table.
-#[[table-rules]]
-    # schema-pattern and table-pattern support the wildcard *?
-    # schema-pattern = "test_*"
-    # table-pattern = "t_*"
-    # target-schema = "test"
-    # target-table = "t"
-
-# Configures the tables of the target database that need to be compared.
-[[check-tables]]
-    # The name of the schema in the target database
-    schema = "test"
-
-    # The list of tables that need to be checked in the target database
-    tables = ["test1", "test2", "test3"]
-
-    # Supports using regular expressions to configure tables to be checked.
-    # You need to start with '~'. For example, the following configuration checks
-    # all the tables with the prefix 'test' in the table name.
-    # tables = ["~^test.*"]
-    # The following configuration checks all the tables in the database.
-    # tables = ["~^"]
-
-# Special configuration for some tables
-# The configured table must be included in "check-tables'.
-[[table-config]]
-    # The name of the schema in the target database
-    schema = "test"
-
-    # The table name
-    table = "test3"
-
-    # Specifies the column used to divide data into chunks. If you do not configure it,
-    # sync-diff-inspector chooses an appropriate column (primary key, unique key, or a field with index).
-    index-fields = "id"
-
-    # Specifies the range of the data to be checked
-    # It needs to comply with the syntax of the WHERE clause in SQL.
-    range = "age > 10 AND age < 20"
-
-    # Sets it to "true" when comparing the data of multiple sharded tables
-    # with the data of the combined table.
-    is-sharding = false
-
-    # The collation of the string type of data might be inconsistent in some conditions.
-    # You can specify "collation" to guarantee the order consistency.
-    # You need to keep it corresponding to the "charset" setting in the database.
-    # collation = "latin1_bin"
-
-    # Ignores checking some columns such as some types (json, bit, blob, etc.)
-    # that sync-diff-inspector does not currently support.
-    # The floating-point data type behaves differently in TiDB and MySQL. You can use
-    # `ignore-columns` to skip checking these columns.
-    # ignore-columns = ["name"]
-
-# Configuration example of comparing two tables with different schema names and table names.
-[[table-config]]
-    # The name of the target schema
-    schema = "test"
-
-    # The name of the target table
-    table = "test2"
-
-    # Sets it to "false" in non-sharding scenarios.
-    is-sharding = false
-
-    # Configuration of the source data
-    [[table-config.source-tables]]
-        # The instance ID of the source schema
-        instance-id = "source-1"
-        # The name of the source schema
-        schema = "test"
-        # The name of the source table
-        table  = "test1"
-
-######################### Databases config #########################
-
-# Configuration of the source database instance
-[[source-db]]
+######################### Datasource config #########################
+[data-sources]
+[data-sources.mysql1] # mysql1 is the only custom ID for the database instance. It is used for the following `task.source-instances/task.target-instance` configuration.
     host = "127.0.0.1"
     port = 3306
     user = "root"
-    password = "123456"
-    # The instance ID of the source database, the unique identifier of a database instance
-    instance-id = "source-1"
-    # Uses the snapshot function of TiDB.
-    # If enabled, the history data is used for comparison.
-    # snapshot = "2016-10-08 16:45:26"
-    # Sets the `sql-mode` of the database to parse table structures.
-    # sql-mode = ""
+    password = ""  # The password for connecting to the upstream database. It can be plain text or Base64-encoded.
 
-# Configuration of the target database instance
-[target-db]
+    # (optional) Use mapping rules to match multiple upstream sharded tables. Rule1 and rule2 are configured in the following Routes section.
+    route-rules = ["rule1", "rule2"]
+
+[data-sources.tidb0]
     host = "127.0.0.1"
     port = 4000
     user = "root"
-    password = "123456"
-    # Uses the snapshot function of TiDB.
-    # If enabled, the history data is used for comparison.
-    # snapshot = "2016-10-08 16:45:26"
-    # Sets the `sql-mode` of the database to parse table structures.
-    # sql-mode = ""
+    password = ""  # The password for connecting to the downstream database. It can be plain text or Base64-encoded.
+
+    # (optional) Use TLS to connect TiDB.
+    # security.ca-path = ".../ca.crt"
+    # security.cert-path = ".../cert.crt"
+    # security.key-path = ".../key.crt"
+
+    # (optional) Use the snapshot feature. If enabled, historical data is used for comparison.
+    # snapshot = "386902609362944000"
+    # When "snapshot" is set to "auto", the last syncpoints generated by TiCDC in the upstream and downstream are used for comparison. For details, see <https://github.com/pingcap/tidb-tools/issues/663>.
+    # snapshot = "auto"
+
+########################### Routes ##############################
+# To compare the data of a large number of tables with different schema names or table names, or check the data of multiple upstream sharded tables and downstream table family, use the table-rule to configure the mapping relationship. You can configure the mapping rule only for the schema or table. Also, you can configure the mapping rules for both the schema and the table.
+[routes]
+[routes.rule1] # rule1 is the only custom ID for the configuration. It is used for the above `data-sources.route-rules` configuration.
+schema-pattern = "test_*"      # Matches the schema name of the data source. Supports the wildcards "*" and "?"
+table-pattern = "t_*"          # Matches the table name of the data source. Supports the wildcards "*" and "?"
+target-schema = "test"         # The name of the schema in the target database
+target-table = "t"             # The name of the target table
+[routes.rule2]
+schema-pattern = "test2_*"      # Matches the schema name of the data source. Supports the wildcards "*" and "?"
+table-pattern = "t2_*"          # Matches the table name of the data source. Supports the wildcards "*" and "?"
+target-schema = "test2"         # The name of the schema in the target database
+target-table = "t2"             # The name of the target table
+
+######################### task config #########################
+# Configures the tables of the target database that need to be compared.
+[task]
+    # output-dir saves the following information:
+    # 1 sql: The SQL file to fix tables that is generated after error is detected. One chunk corresponds to one SQL file.
+    # 2 log: sync-diff.log
+    # 3 summary: summary.txt
+    # 4 checkpoint: a dir
+    output-dir = "./output"
+    # The upstream database. The value is the unique ID declared by data-sources.
+    source-instances = ["mysql1"]
+    # The downstream database. The value is the unique ID declared by data-sources.
+    target-instance = "tidb0"
+    # The tables of downstream databases to be compared. Each table needs to contain the schema name and the table name, separated by '.'
+    # Use "?" to match any character and "*" to match characters of any length.
+    # For detailed match rules, refer to golang regexp pkg: https://github.com/google/re2/wiki/Syntax.
+    target-check-tables = ["schema*.table*", "!c.*", "test2.t2"]
+    # (optional) Extra configurations for some tables, Config1 is defined in the following table config example.
+    target-configs = ["config1"]
+
+######################### Table config #########################
+# Special configurations for specific tables. The tables to be configured must be in `task.target-check-tables`.
+[table-configs.config1] # config1  is the only custom ID for this configuration. It is used for the above `task.target-configs` configuration.
+# The name of the target table, you can use regular expressions to match multiple tables, but one table is not allowed to be matched by multiple special configurations at the same time.
+target-tables = ["schema*.test*", "test2.t2"]
+# (optional) Specifies the range of the data to be checked
+# It needs to comply with the syntax of the WHERE clause in SQL.
+range = "age > 10 AND age < 20"
+# (optional) Specifies the column used to divide data into chunks. If you do not configure it,
+# sync-diff-inspector chooses an appropriate column (primary key, unique key, or a field with index).
+index-fields = ["col1","col2"]
+# (optional) Ignores checking columns that you want to exclude from validation.
+# For example, columns with known cross-implementation differences (such as floating-point types)
+# or columns you prefer to validate separately.
+# The floating-point data type behaves differently in TiDB and MySQL. You can use
+# `ignore-columns` to skip checking these columns.
+ignore-columns = ["",""]
+# (optional) Specifies the size of the chunk for dividing the table. If not specified, this configuration can be deleted or be set as 0.
+chunk-size = 0
+# (optional) Specifies the "collation" for the table. If not specified, this configuration can be deleted or be set as an empty string.
+collation = ""
 ```
 
-### Run sync-diff-inspector
+## Run sync-diff-inspector
 
 Run the following command:
 
-``` bash
-./bin/sync_diff_inspector --config=./config.toml
+{{< copyable "shell-regular" >}}
+
+```bash
+./sync_diff_inspector --config=./config.toml
 ```
 
-This command outputs a check report to the log and describes the check result of each table. sync-diff-inspector generates the SQL statements to fix inconsistent data and stores these statements in a `fix.sql` file.
+This command outputs a check report `summary.txt` in the `output-dir` of `config.toml` and the log `sync_diff.log`. In the `output-dir`, a folder named by the hash value of the `config.toml` file is also generated. This folder includes the checkpoint node information of breakpoints and the SQL file generated when the data is inconsistent.
 
-#### Log
+### Progress information
 
-The running sync-diff-inspector periodically (every 10 seconds) prints the progress in log in the following format:
+sync-diff-inspector sends progress information to `stdout` when running. Progress information includes the comparison results of table structures, comparison results of table data and the progress bar.
 
-```log
-[2020/11/12 17:47:00.170 +08:00] [INFO] [checkpoint.go:276] ["summary info"] [instance_id=target] [schema=test] [table=test_table] ["chunk num"=1000] ["success num"=80] ["failed num"=1] ["ignore num"=0]
+> **Note:**
+>
+> To ensure the display effect, keep the display window width above 80 characters.
+
+```
+A total of 2 tables need to be compared
+
+Comparing the table structure of ``sbtest`.`sbtest96`` ... equivalent
+Comparing the table structure of ``sbtest`.`sbtest99`` ... equivalent
+Comparing the table data of ``sbtest`.`sbtest96`` ... failure
+Comparing the table data of ``sbtest`.`sbtest99`` ...
+_____________________________________________________________________________
+Progress [==========================================================>--] 98% 193/200
 ```
 
-- `chunk num`: The total number of chunks to be checked.
-- `success num`: The number of chunks that have been checked as consistent.
-- `failed num`: The number of chunks that fail the check. Check failure might be caused by errors or data inconsistency.
-- `ignore num`: The number of chunks that are ignored for the check. If the value of `sample-percent` is smaller than `100`, sync-diff-inspector checks data by sampling, where some chunks are ignored.
+```
+A total of 2 tables need to be compared
 
-#### Result
+Comparing the table structure of ``sbtest`.`sbtest96`` ... equivalent
+Comparing the table structure of ``sbtest`.`sbtest99`` ... equivalent
+Comparing the table data of ``sbtest`.`sbtest96`` ... failure
+Comparing the table data of ``sbtest`.`sbtest99`` ... failure
+_____________________________________________________________________________
+Progress [============================================================>] 100% 0/0
+The data of `sbtest`.`sbtest99` is not equal
+The data of `sbtest`.`sbtest96` is not equal
 
-After the check is finished, sync-diff-inspector outputs a report.
+The rest of tables are all equal.
 
-+ If the data is consistent, a log example is as follows:
+A total of 2 tables have been compared, 0 tables finished, 2 tables failed, 0 tables skipped.
+The patch file has been generated in
+        'output/fix-on-tidb2/'
+You can view the comparison details through 'output/sync_diff.log'
+```
 
-    ```log
-    [2020/11/12 17:47:00.174 +08:00] [INFO] [report.go:80] ["check result summary"] ["check passed num"=1] ["check failed num"=0]
-    [2020/11/12 17:47:00.174 +08:00] [INFO] [report.go:87] ["table check result"] [schema=test] [table=test_table] ["struct equal"=true] ["data equal"=true]
-    [2020/11/12 17:47:00.174 +08:00] [INFO] [main.go:75] ["check data finished"] [cost=353.462744ms]
-    [2020/11/12 17:47:00.174 +08:00] [INFO] [main.go:69] ["check pass!!!"]
-    ```
+### Output file
 
-+ If the data is inconsistent or some errors occur, a log example is as follows:
+The directory structure of the output file is as follows:
 
-    ```log
-    [2020/11/12 18:16:17.068 +08:00] [INFO] [checkpoint.go:276] ["summary info"] [instance_id=target] [schema=test] [table=test1] ["chunk num"=1] ["success num"=0] ["failed num"=1] ["ignore num"=0]
-    [2020/11/12 18:16:17.071 +08:00] [INFO] [report.go:80] ["check result summary"] ["check passed num"=0] ["check failed num"=1]
-    [2020/11/12 18:16:17.071 +08:00] [INFO] [report.go:87] ["table check result"] [schema=test] [table=test_table] ["struct equal"=true] ["data equal"=false]
-    [2020/11/12 18:16:17.071 +08:00] [INFO] [main.go:75] ["check data finished"] [cost=319.849706ms]
-    [2020/11/12 18:16:17.071 +08:00] [WARN] [main.go:66] ["check failed!!!"]
-    ```
+```
+output/
+|-- checkpoint # Saves the breakpoint information
+| |-- bbfec8cc8d1f58a5800e63aa73e5 # Config hash. The placeholder file which identifies the configuration file corresponding to the output directory (output/)
+│ |-- DO_NOT_EDIT_THIS_DIR
+│ └-- sync_diff_checkpoints.pb # The breakpoint information
+|
+|-- fix-on-target # Saves SQL files to fix data inconsistency
+| |-- xxx.sql
+| |-- xxx.sql
+| └-- xxx.sql
+|
+|-- summary.txt # Saves the summary of the check results
+└-- sync_diff.log # Saves the output log information when sync-diff-inspector is running
+```
 
-The number of tables that have passed and failed the check is printed in `check result summary`. The results of all tables are printed in `table check result`.
+### Log
 
-### Note
+The log of sync-diff-inspector is saved in `${output}/sync_diff.log`, among which `${output}` is the value of `output-dir` in the `config.toml` file.
+
+### Progress
+
+The running sync-diff-inspector periodically (every 10 seconds) prints the progress in checkpoint, which is located at `${output}/checkpoint/sync_diff_checkpoints.pb`, among which `${output}` is the value of `output-dir` in the `config.toml` file.
+
+### Result
+
+After the check is finished, sync-diff-inspector outputs a report. It is located at `${output}/summary.txt`, and `${output}` is the value of `output-dir` in the `config.toml` file.
+
+```
++---------------------+--------------------+----------------+---------+-----------+
+|        TABLE        | STRUCTURE EQUALITY | DATA DIFF ROWS | UPCOUNT | DOWNCOUNT |
++---------------------+--------------------+----------------+---------+-----------+
+| `sbtest`.`sbtest99` | true               | +97/-97        |  999999 |    999999 |
+| `sbtest`.`sbtest96` | true               | +0/-101        |  999999 |   1000100 |
++---------------------+--------------------+----------------+---------+-----------+
+Time Cost: 16.75370462s
+Average Speed: 113.277149MB/s
+```
+
+- `TABLE`: The corresponding database and table names
+- `RESULT`: Whether the check is completed. If you have configured `skip-non-existing-table = true`, the value of this column is `skipped` for tables that do not exist in the upstream or downstream
+- `STRUCTURE EQUALITY`: Checks whether the table structure is the same
+- `DATA DIFF ROWS`: `rowAdd`/`rowDelete`. Indicates the number of rows that need to be added/deleted to fix the table
+- `UPCOUNT`: The number of rows in this table in the upstream data source
+- `DOWNCOUNT`: The number of rows in this table in the downstream data source
+
+### SQL statements to fix inconsistent data
+
+If different rows exist during the data checking process, the SQL statements will be generated to fix them. If the data inconsistency exists in a chunk, a SQL file named by `chunk.Index` will be generated. The SQL file is located at `${output}/fix-on-${instance}`, and `${instance}` is the value of `task.target-instance` in the `config.toml` file.
+
+A SQL file contains the table to which the chunk belongs and the range information. For the SQL files, you should consider the following three situations:
+
+- If the rows in the downstream database are missing, REPLACE statements will be applied
+- If the rows in the downstream database are redundant, DELETE statements will be applied
+- If some data of the rows in the downstream database is inconsistent, REPLACE statements will be applied and inconsistent columns will be marked with annotation in the SQL file
+
+```sql
+-- table: sbtest.sbtest99
+-- range in sequence: (3690708) < (id) <= (3720581)
+/*
+  DIFF COLUMNS ╏   `K`   ╏                `C`                 ╏               `PAD`
+╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  source data  ╏ 2501808 ╏ 'hello'                            ╏ 'world'
+╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╋╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+*/
+REPLACE INTO `sbtest`.`sbtest99`(`id`,`k`,`c`,`pad`) VALUES (3700000,2501808,'hello','world');
+```
+
+## Note
 
 - sync-diff-inspector consumes a certain amount of server resources when checking data. Avoid using sync-diff-inspector to check data during peak business hours.
-- TiDB uses the `utf8_bin` collation. If you need to compare the data in MySQL with that in TiDB, pay attention to the collation configuration of MySQL tables. If the primary key or unique key is the `varchar` type and the collation configuration in MySQL differs from that in TiDB, then the final check result might be incorrect because of the collation issue. You need to add collation to the sync-diff-inspector configuration file.
+- Before comparing data in MySQL with TiDB, verify the character set and `collation` configuration of your tables. This is critical for tables with `varchar`, `text`, or `JSON` columns containing UTF-8 data, especially when these columns are part of a primary key or unique key. MySQL 8.0 defaults to `utf8mb4_0900_ai_ci` (case-insensitive, accent-insensitive), while TiDB often uses `utf8mb4_bin` (binary/case-sensitive). This mismatch causes sync-diff-inspector to report false differences for identical UTF-8 strings and JSON string values. To avoid false positives, align collations on both upstream and downstream tables (for example, `utf8mb4_bin`) or use `ignore-columns` to exclude affected UTF-8 text and JSON columns.
+- If you configure `collation` in the sync-diff-inspector configuration file and explicitly use the same collation for both upstream and downstream during chunk-based comparison, note that the order of index fields depends on the table's collation configuration. If the collations differ, one side might be unable to use the index. Additionally, if the character sets differ between upstream and downstream (for example, MySQL uses `utf8` while TiDB uses `utf8mb4`), it is not possible to unify the collation configuration.
+- The following scenarios can produce false differences even when data is logically identical:
+    - VARCHAR and TEXT columns with different collations between upstream and downstream (for example, `utf8mb4_0900_ai_ci` vs `utf8mb4_bin`) will report differences for identical string values;
+    - JSON columns containing string values are subject to the same collation-based comparison issues;
+    - Auto-populated TIMESTAMP columns (such as `DEFAULT CURRENT_TIMESTAMP` or `ON UPDATE CURRENT_TIMESTAMP`) can introduce noise when schemas are loaded at different times or when comparing data with slight timing variations.
+- If you validate datasets that include auto-populated timestamp columns, consider setting deterministic TIMESTAMP values for validation data rather than relying on `DEFAULT CURRENT_TIMESTAMP`, or use `ignore-columns` to exclude auto-populated TIMESTAMP columns if their exact values are not critical to your validation goals.
+- If the primary key differs between upstream and downstream tables, sync-diff-inspector does not use the original primary key column to divide chunks. For example, when sharded tables in MySQL are merged into TiDB using a composite primary key that includes the original primary key and a shard key. In this case, configure the original primary key column using `index-fields` and set `check-data-only` to `true`.
 - sync-diff-inspector divides data into chunks first according to TiDB statistics and you need to guarantee the accuracy of the statistics. You can manually run the `analyze table {table_name}` command when the TiDB server's *workload is light*.
-- Pay special attention to `table-rules`. If you configure `schema-pattern="test1"` and `target-schema="test2"`, the `test1` schema in the source database and the `test2` schema in the target database are compared. If the source database has a `test2` schema, this `test2` schema is also compared with the `test2` schema in the target database.
-- The generated `fix.sql` is only used as a reference for repairing data, and you need to confirm it before executing these SQL statements to repair data.
+- Pay special attention to `table-rules`. If you configure `schema-pattern="test1"`, `table-pattern = "t_1"`, `target-schema="test2"` and `target-table = "t_2"`, the `test1`.`t_1` schema in the source database and the `test2`.`t_2` schema in the target database are compared. Sharding is enabled by default in sync-diff-inspector, so if the source database has a `test2`.`t_2` table, the `test1`.`t_1` table and `test2`.`t_2` table in the source database serving as sharding are compared with the `test2`.`t_2` table in the target database.
+- The generated SQL file is only used as a reference for repairing data, and you need to confirm it before executing these SQL statements to repair data.
+
+## Related resources
+
+<RelatedResources>
+  <ResourceCard title="TiDB Admin Lab 9: Using sync-diff-inspector for Data Check" type="lab" link="https://labs.tidb.io/labs/dba_303_lab_ff8" imgSrc="https://lab-static.pingcap.com/quick-demo/dba_303_ch10_en.png" duration="60 mins" />
+</RelatedResources>

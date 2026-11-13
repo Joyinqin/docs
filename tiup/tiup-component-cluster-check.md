@@ -1,5 +1,6 @@
 ---
 title: tiup cluster check
+summary: TiUP Cluster provides a `check` command to ensure hardware and software environments meet production requirements. It checks OS version, CPU support, time synchronization, system limits, and more. Options include automatic repair and enabling checks for CPU core count, memory size, and disk performance. Use `tiup cluster check <topology.yml | cluster-name> [flags]` command to perform checks. Use `--apply` to attempt automatic repair. Use `-N, --node` and `-R, --role` to specify nodes and roles to check. Use `--enable-cpu`, `--enable-disk`, and `--enable-mem` to enable specific checks.
 ---
 
 # tiup cluster check
@@ -10,7 +11,7 @@ For a formal production environment, before the environment goes live, you need 
 
 ### Operating system version
 
-Check the operating system distribution and version of the deployed machines. Currently, only CentOS 7 is supported for deployment. More system versions may be supported in later releases for compatibility improvement.
+Check the operating system distribution and version of the deployed machines. For a list of supported versions, see [OS and platform requirements](/hardware-and-software-requirements.md#os-and-platform-requirements).
 
 ### CPU EPOLLEXCLUSIVE
 
@@ -18,11 +19,15 @@ Check whether the CPU of the target machine supports EPOLLEXCLUSIVE.
 
 ### numactl
 
-Check whether numactl is installed on the target machine. If tied cores are configured on the target machine, you must install numactl.
+Check whether `numactl` is installed on the target machine. If tied cores are configured on the target machine, you must install `numactl`.
 
 ### System time
 
-Check whether the system time of the target machine is synchronized. Compare the system time of the target machine with that of the central control machine, and report an error if the deviation exceeds a certain threshold (500ms).
+Check whether the system time of the target machine is synchronized. Compare the system time of the target machine with that of the central control machine, and report an error if the deviation exceeds a certain threshold (500 ms).
+
+### System time zone
+
+Check whether the system time zone of the target machines is synchronized. Compare the time zone configuration of these machines and report an error if the time zone is inconsistent.
 
 ### Time synchronization service
 
@@ -47,6 +52,16 @@ Check the values of the following kernel parameters:
 
 Check whether THP is enabled on the target machine. It is recommended to disable THP.
 
+To check if THP is enabled you can run this:
+
+```
+cat /sys/kernel/mm/transparent_hugepage/enabled
+```
+
+If it is not set to `never`, you can change it with `grubby --update-kernel=ALL --args="transparent_hugepage=never"`.
+
+To change the running configuration, either reboot or run `echo never > /sys/kernel/mm/transparent_hugepage/enabled`.
+
 ### System limits
 
 Check the limit values in the `/etc/security/limits.conf` file:
@@ -61,7 +76,11 @@ Check the limit values in the `/etc/security/limits.conf` file:
 
 ### SELinux
 
-Check whether SELinux is enabled. It is recommended to disable SELinux.
+SELinux must be disabled or set to permissive mode. To check the current status, use the [getenforce(8)](https://linux.die.net/man/8/getenforce) utility.
+
+If SELinux is not disabled, open the `/etc/selinux/config` file, locate the line starting with `SELINUX=`, and change it to `SELINUX=disabled`. After making this change, you need to reboot the system because switching from `enforcing` or `permissive` to `disabled` does not take effect without a reboot.
+
+On some systems (such as Ubuntu), the `/etc/selinux/config` file might not exist, and the getenforce utility might not be installed. In that case, you can skip this step.
 
 ### Firewall
 
@@ -83,13 +102,13 @@ Check if the ports defined in the topology (including the auto-completion defaul
 >
 > The port usage check assumes that a cluster is not started yet. If a cluster is already deployed and started, the port usage check on the cluster fails because the ports must be in use in this case.
 
-### CPU core number
+### CPU core count
 
 Check the CPU information of the target machine. For a production cluster, it is recommended that the number of the CPU logical core is greater than or equal to 16.
 
 > **Note:**
 >
-> CPU core number is not checked by default. To enable the check, you need to add the `-enable-cpu` option to the command.
+> CPU core count is not checked by default. To enable the check, you need to add the `--enable-cpu` option to the command.
 
 ### Memory size
 
@@ -97,7 +116,7 @@ Check the memory size of the target machine. For a production cluster, it is rec
 
 > **Note:**
 >
-> Memory size is not checked by default. To enable the check, you need to add the `-enable-mem` option to the command.
+> Memory size is not checked by default. To enable the check, you need to add the `--enable-mem` option to the command.
 
 ### Fio disk performance test
 
@@ -109,7 +128,7 @@ Use flexible I/O tester (fio) to test the performance of the disk where `data_di
 
 > **Note:**
 >
-> The fio disk performance test is not performed by default. To perform the test, you need to add the `-enable-disk` option to the command.
+> The fio disk performance test is not performed by default. To perform the test, you need to add the `--enable-disk` option to the command.
 
 ## Syntax
 
@@ -119,6 +138,7 @@ tiup cluster check <topology.yml | cluster-name> [flags]
 
 - If a cluster is not deployed yet, you need to pass the [topology.yml](/tiup/tiup-cluster-topology-reference.md) file that is used to deploy the cluster. According to the content in this file, tiup-cluster connects to the corresponding machine to perform the check.
 - If a cluster is already deployed, you can use the `<cluster-name>` as the check object.
+- If you want to check the scale-out YAML file for an existing cluster, you can use both `<scale-out.yml>` and `<cluster-name>` as the check objects.
 
 > **Note:**
 >
@@ -138,21 +158,33 @@ tiup cluster check <topology.yml | cluster-name> [flags]
 - Data type: `BOOLEAN`
 - This option is disabled by default with the `false` value. To enable this option, add this option to the command, and either pass the `true` value or do not pass any value.
 
+> **Note:**
+>
+> `tiup cluster check` also supports repairing the `scale-out.yml` file for an existing cluster with the following command format:
+>
+> ```shell
+> tiup cluster check <cluster-name> scale-out.yml --cluster --apply --user root [-p] [-i /home/root/.ssh/gcp_rsa]
+> ```
+
 ### --cluster
 
-- Indicates that the check is for the deployed clusters.
+- Indicates that the check is for a cluster that has been deployed.
 - Data type: `BOOLEAN`
 - This option is disabled by default with the `false` value. To enable this option, add this option to the command, and either pass the `true` value or do not pass any value.
+- Command format:
+
+    ```shell
+    tiup cluster check <topology.yml | cluster-name> --cluster [flags]
+    ```
 
 > **Note:**
 >
-> tiup-cluster supports checking both un-deployed clusters and deployed clusters with the following command format:
-> 
-> ```shell
-> tiup cluster check <topology.yml | cluster-name> [flags]
-> ```
-> 
-> If the `tiup cluster check <cluster-name>` command is used, you must add the `--cluster` option: `tiup cluster check <cluster-name> --cluster`.
+> - If the `tiup cluster check <cluster-name>` command is used, you must add the `--cluster` option: `tiup cluster check <cluster-name> --cluster`.
+> - `tiup cluster check` also supports checking the `scale-out.yml` file for an existing cluster with the following command format:
+>
+>   ```shell
+>   tiup cluster check <cluster-name> scale-out.yml --cluster --user root [-p] [-i /home/root/.ssh/gcp_rsa]
+>   ```
 
 ### -N, --node
 
@@ -176,7 +208,7 @@ tiup cluster check <topology.yml | cluster-name> [flags]
 
 ### --enable-cpu
 
-- Enables the check of CPU core number.
+- Enables the check of CPU core count.
 - Data type: `BOOLEAN`
 - This option is disabled by default with the `false` value. To enable this option, add this option to the command, and either pass the `true` value or do not pass any value.
 
@@ -200,7 +232,7 @@ tiup cluster check <topology.yml | cluster-name> [flags]
 
 > **Note:**
 >
-> This option is valid only if the `-cluster` option is false. Otherwise, the value of this option is fixed to the username specified in the topology file for the cluster deployment.
+> This option is valid only if the `--cluster` option is false. Otherwise, the value of this option is fixed to the username specified in the topology file for the cluster deployment.
 
 ### -i, --identity_file
 
@@ -234,5 +266,3 @@ A table containing the following fields:
 - `Check`: the check item
 - `Result`: the check result (Pass, Warn, or Fail)
 - `Message`: the result description
-
-[<< Back to the previous page - TiUP Cluster command list](/tiup/tiup-component-cluster.md#command-list)

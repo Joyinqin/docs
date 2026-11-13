@@ -6,7 +6,7 @@ aliases: ['/docs/dev/sql-statements/sql-statement-drop-view/','/docs/dev/referen
 
 # DROP VIEW
 
-This statement drops an view object from the currently selected database. It does not effect any base tables that a view references.
+This statement drops a view object from the currently selected database. It does not affect any base tables that a view references.
 
 ## Synopsis
 
@@ -74,7 +74,7 @@ mysql> SELECT * FROM t1;
 
 ## MySQL compatibility
 
-This statement is understood to be fully compatible with MySQL. Any compatibility differences should be [reported via an issue](https://github.com/pingcap/tidb/issues/new/choose) on GitHub.
+The `DROP VIEW` statement in TiDB is fully compatible with MySQL. If you find any compatibility differences, [report a bug](https://docs.pingcap.com/tidb/stable/support).
 
 ## See also
 

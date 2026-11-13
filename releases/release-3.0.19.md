@@ -1,5 +1,6 @@
 ---
 title: TiDB 3.0.19 Release Notes
+summary: TiDB 3.0.19 was released on September 25, 2020. Compatibility changes include import path and copyright information updates. Improvements were made to mitigate failure recovery impact, support concurrency adjustment, and set nonadjustable values. Bug fixes were made for query errors, privilege checks, type changes, constraint checks, table lock release, operator handling, and panic parsing. Tools like TiDB Lightning also received fixes for process exit timing.
 ---
 
 # TiDB 3.0.19 Release Notes
@@ -49,4 +50,4 @@ TiDB version: 3.0.19
 
     + TiDB Lightning
 
-        - Fix the issue that the TiDB Lightning process does not exit in time when encountering illegal UTF characters in CSV in the strict mode [#378](https://github.com/pingcap/tidb-lightning/pull/378)
+        - Fix the issue that the TiDB Lightning process does not exit in time when encountering invalid UTF characters in CSV in the strict mode [#378](https://github.com/pingcap/tidb-lightning/pull/378)

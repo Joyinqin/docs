@@ -1,7 +1,7 @@
 ---
 title: TiDB Best Practices
-summary: Learn the best practices of using TiDB.
-aliases: ['/docs/dev/tidb-best-practices/']
+summary: This document summarizes best practices for using TiDB, covering SQL use and optimization tips for OLAP and OLTP scenarios, with a focus on TiDB-specific optimization options. It also recommends reading three blog posts introducing TiDB's technical principles before diving into the best practices.
+aliases: ['/docs/dev/tidb-best-practices/','/tidb/stable/tidb-best-practices/','/tidb/dev/tidb-best-practices/']
 ---
 
 # TiDB Best Practices
@@ -10,9 +10,9 @@ This document summarizes the best practices of using TiDB, including the use of 
 
 Before you read this document, it is recommended that you read three blog posts that introduce the technical principles of TiDB:
 
-* [TiDB Internal (I) - Data Storage](https://pingcap.com/blog/2017-07-11-tidbinternal1/)
-* [TiDB Internal (II) - Computing](https://pingcap.com/blog/2017-07-11-tidbinternal2/)
-* [TiDB Internal (III) - Scheduling](https://pingcap.com/blog/2017-07-20-tidbinternal3/)
+* [TiDB Internal (I) - Data Storage](https://www.pingcap.com/blog/tidb-internal-data-storage/)
+* [TiDB Internal (II) - Computing](https://www.pingcap.com/blog/tidb-internal-computing/)
+* [TiDB Internal (III) - Scheduling](https://www.pingcap.com/blog/tidb-internal-scheduling/)
 
 ## Preface
 
@@ -34,7 +34,7 @@ To store three replicas, compared with the replication of Source-Replica, Raft i
 
 ### Distributed transactions
 
-TiDB provides complete distributed transactions and the model has some optimizations on the basis of [Google Percolator](https://research.google.com/pubs/pub36726.html). This document introduces the following features:
+TiDB provides complete distributed transactions and the model has some optimizations on the basis of [Google Percolator](https://research.google/pubs/large-scale-incremental-processing-using-distributed-transactions-and-notifications/). This document introduces the following features:
 
 * Optimistic transaction model
 
@@ -42,9 +42,9 @@ TiDB provides complete distributed transactions and the model has some optimizat
 
     Assume that the database is used as a counter. High access concurrency might lead to severe conflicts, resulting in multiple retries or even timeouts. Therefore, in the scenario of severe conflicts, it is recommended to use the pessimistic transaction mode or to solve problems at the system architecture level, such as placing counter in Redis. Nonetheless, the optimistic transaction model is efficient if the access conflict is not very severe.
 
-* Pessimistic transaction model
+* Pessimistic transaction mode
 
-    In TiDB, the pessimistic transaction model has almost the same behavior as in MySQL. The transaction applies a lock during the execution phase, which avoids retries in conflict situations and ensures a higher success rate. By applying the pessimistic locking, you can also lock data in advance using `SELECT FOR UPDATE`.
+    In TiDB, the pessimistic transaction mode has almost the same behavior as in MySQL. The transaction applies a lock during the execution phase, which avoids retries in conflict situations and ensures a higher success rate. By applying the pessimistic locking, you can also lock data in advance using `SELECT FOR UPDATE`.
 
     However, if the application scenario has fewer conflicts, the optimistic transaction model has better performance.
 
@@ -68,7 +68,7 @@ Placement Driver (PD) balances the load of the cluster according to the status o
 
 ### SQL on KV
 
-TiDB automatically maps the SQL structure into Key-Value structure. For details, see [TiDB Internal (II) - Computing](https://pingcap.com/blog/2017-07-11-tidbinternal2/).
+TiDB automatically maps the SQL structure into Key-Value structure. For details, see [TiDB Internal (II) - Computing](https://www.pingcap.com/blog/tidb-internal-computing/).
 
 Simply put, TiDB performs the following operations:
 
@@ -81,13 +81,13 @@ Similarly, if all data is read from a focused small range (for example, the cont
 
 ### Secondary index
 
-TiDB supports the complete secondary indexes, which are also global indexes. Many queries can be optimized by index. Thus, it is important for applications to make good use of secondary indexes.
+TiDB supports the complete secondary indexes, which are also [global indexes](/global-indexes.md). Many queries can be optimized by index. Thus, it is important for applications to make good use of secondary indexes.
 
 Lots of MySQL experience is also applicable to TiDB. It is noted that TiDB has its unique features. The following are a few notes when using secondary indexes in TiDB.
 
 * The more secondary indexes, the better?
 
-    Secondary indexes can speed up queries, but adding an index has side effects. The previous section introduces the storage model of indexes. For each additional index, there will be one more Key-Value when inserting a piece of data. Therefore, the more indexes, the slower the writing speed and the more space it takes up.
+    Secondary indexes can speed up queries, but adding an index has side effects. The previous section introduces the storage format of indexes. For each additional index, there will be one more Key-Value when inserting a row. Therefore, the more indexes, the slower the writing speed and the more space it takes up.
 
     In addition, too many indexes affects the runtime of the optimizer, and inappropriate indexes mislead the optimizer. Thus, more secondary indexes does not mean better performance.
 
@@ -95,7 +95,7 @@ Lots of MySQL experience is also applicable to TiDB. It is noted that TiDB has i
 
     As is mentioned above, index is important but the number of indexes should be proper. You must create appropriate indexes according to the application characteristics. In principle, you need to create an index on the columns involved in the query to improve the performance. The following are situations that need to create indexes:
 
-    - For columns with a high degree of differentiation, filtered rows are remarkably reduced through indexes.
+    - For high-cardinality columns, filtered rows are remarkably reduced through indexes.
     - If there are multiple query criteria, you can choose composite indexes. Note to put the columns with the equivalent condition before composite indexes.
 
     For example, if a commonly used query is `select * from t where c1 = 10 and c2 = 100 and c3 > 10`, you can create a composite index `Index cidx (c1, c2, c3)`. In this way, you can use the query condition to create an index prefix and then scan.
@@ -130,7 +130,7 @@ Lots of MySQL experience is also applicable to TiDB. It is noted that TiDB has i
 
 * Ensure the order of results through indexes
 
-    You can use indexes to filter or sort data. Firstly, get row IDs according to the index order. Then, return the row content according to the return order of row IDs. In this way, the returned results are ordered according to the index column. It has been mentioned earlier that the model of scanning index and getting row is parallel + pipeline. If the row is returned according to the index order, a high concurrency between two queries does not reduce latency. Thus, the concurrency is low by default, but it can be modified through the [`tidb_index_serial_scan_concurrency`](/system-variables.md#tidb_index_serial_scan_concurrency) variable.
+    You can use indexes to filter or sort data. TiDB first gets row IDs according to the index order, and then returns the row content according to the order of those row IDs. In this way, the returned results are ordered according to the index column. It has been mentioned earlier that the model of scanning index and getting row is parallel + pipeline. If the row is returned according to the index order, a high concurrency between two queries does not reduce latency. Thus, the concurrency is low by default, but you can increase it by adjusting [`tidb_executor_concurrency`](/system-variables.md#tidb_executor_concurrency-new-in-v50).
 
 * Reverse index scan
 
@@ -142,7 +142,7 @@ In the last section, we discussed some basic implementation mechanisms of TiDB a
 
 ### Deployment
 
-Before deployment, read [Software and Hardware Requirements](/hardware-and-software-requirements.md).
+Before deployment, read [TiDB Software and Hardware Requirements](/hardware-and-software-requirements.md).
 
 It is recommended to deploy the TiDB cluster using [TiUP](/production-deployment-using-tiup.md). This tool can deploy, stop, destroy, and upgrade the whole cluster, which is quite convenient. It is not recommended to manually deploy the TiDB cluster, which might be troublesome to maintain and upgrade later.
 
@@ -160,14 +160,14 @@ As mentioned before, TiDB limits the size of a single transaction in the Key-Val
 
 It is recommended to split statements into batches or add a limit to the statements, whether they are `INSERT`, `UPDATE` or `DELETE` statements.
 
-When deleting a large amount of data, it is recommended to use `Delete * from t where xx limit 5000;`. It deletes through the loop and use `Affected Rows == 0` as a condition to end the loop.
+When deleting a large amount of data, it is recommended to use `Delete from t where xx limit 5000;`. It deletes through the loop and use `Affected Rows == 0` as a condition to end the loop.
 
 If the amount of data that needs to be deleted at a time is large, this loop method gets slower and slower because each deletion traverses backward. After deleting the previous data, lots of deleted flags remain for a short period (then all is cleared by Garbage Collection) and affect the following `DELETE` statement. If possible, it is recommended to refine the `WHERE` condition. Assume that you need to delete all data on `2017-05-26`, you can use the following statements:
 
 ```sql
 for i from 0 to 23:
     while affected_rows > 0:
-        delete * from t where insert_time >= i:00:00 and insert_time < (i+1):00:00 limit 5000;
+        delete from t where insert_time >= i:00:00 and insert_time < (i+1):00:00 limit 5000;
         affected_rows = select affected_rows()
 ```
 
@@ -203,7 +203,7 @@ The best way to learn about a system or solve the problem is to read its documen
 
 TiDB has a large number of official documents both in Chinese and English. If you have met an issue, you can start from [FAQ](/faq/tidb-faq.md) and [TiDB Cluster Troubleshooting Guide](/troubleshoot-tidb-cluster.md). You can also search the issue list or create an issue in [TiDB repository on GitHub](https://github.com/pingcap/tidb).
 
-TiDB also has many useful ecosystem tools. See [Ecosystem Tool Overview](/ecosystem-tool-user-guide.md) for details.
+TiDB also has many useful migration tools. See [Migration Tool Overview](/ecosystem-tool-user-guide.md) for details.
 
 For more articles on the technical details of TiDB, see the [PingCAP official blog site](https://pingcap.com/blog/).
 
@@ -215,4 +215,4 @@ TiDB is suitable for the following scenarios:
 - You do not want to do sharding
 - The access mode has no obvious hotspot
 - Transactions, strong consistency, and disaster recovery are required
-- You hope to have real-time Hybrid Transaction/Analytical Processing (HTAP) analytics and reduce storage links
+- You hope to have real-time Hybrid Transaction/Analytical Processing (HTAP) analytics and reduce data pipelines

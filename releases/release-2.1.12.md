@@ -1,6 +1,7 @@
 ---
 title: TiDB 2.1.12 Release Notes
 aliases: ['/docs/dev/releases/release-2.1.12/','/docs/dev/releases/2.1.12/']
+summary: TiDB 2.1.12 was released on June 13, 2019. It includes various bug fixes and improvements, such as fixing issues with data type mismatches, charset altering, and GRANT operations. The release also improves compatibility with MySQL and addresses issues with functions, data conversion, and error reporting. Additionally, PD and TiKV have also been updated to fix issues related to leader election and data availability during leader transfer and power failure.
 ---
 
 # TiDB 2.1.12 Release Notes
@@ -39,5 +40,5 @@ TiDB Ansible version: 2.1.12
 
 ## TiKV
 
-- Fix the issue that Regions are not available during the leader transfer process in extreme conditions [#4799](https://github.com/tikv/tikv/pull/4734)
+- Fix the issue that Regions are not available during the leader transfer process in extreme conditions [#4799](https://github.com/tikv/tikv/pull/4799)
 - Fix the issue that TiKV loses data when the power of the machine fails abnormally, caused by delayed data flush to the disk when receiving snapshots [#4850](https://github.com/tikv/tikv/pull/4850)
